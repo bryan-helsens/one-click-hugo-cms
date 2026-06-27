@@ -19,13 +19,17 @@ Screenshot ──▶ in-browser OCR (Tesseract.js) ──▶ name / CP / HP ─�
 1. **Add a Pokémon** — take a photo / upload a screenshot of the Pokémon detail
    screen. The app runs OCR locally and pre-fills the form. Review the values
    (OCR isn't perfect) and save.
-2. **Track your collection** — tag Pokémon as ✨ Shiny, 🍀 Lucky, 🌑 Shadow,
+2. **Record IVs** — set Attack / Defense / HP on clickable 15-segment bars (with
+   a live IV% readout), or try the **experimental appraisal-screen scanner**
+   that reads the red bars from a screenshot and pre-fills them for you.
+3. **Track your collection** — tag Pokémon as ✨ Shiny, 🍀 Lucky, 🌑 Shadow,
    👑 Legendary, or ⭐ Favorite. Recognised legendaries are auto-tagged.
-3. **Search, filter & sort** — by name, notes, tag, CP, or date added.
-4. **Transfer advice** — duplicates of the same species are detected, and the
+4. **Search, filter & sort** — by name, notes, tag, CP, IV%, or date added.
+5. **Transfer advice** — duplicates of the same species are detected, and the
    weaker copies (that aren't favorited/shiny/lucky/shadow/legendary) are
-   flagged as transfer candidates so you keep your best and clean out the rest.
-5. **Backup** — Export/Import your whole inventory as JSON to back it up or move
+   flagged as transfer candidates. The *best* copy to keep is chosen by IV%
+   first, then CP — so you protect your highest-IV mon and clear out the rest.
+6. **Backup** — Export/Import your whole inventory as JSON to back it up or move
    it between devices.
 
 ## Running it
@@ -55,16 +59,19 @@ open it in your mobile browser so you can use the camera to capture screens.
   `localStorage`; the only way data leaves is when *you* press Export.
 - OCR runs entirely in your browser. Images are not uploaded anywhere.
 
-## Known limits (and the planned v2)
+## Known limits
 
-- OCR reliably reads **name, CP and HP** (plain text). The **IV stats**
-  (Attack / Defense / HP) are shown in-game as *bars*, not numbers, so they need
-  image analysis rather than text OCR — that's the planned **v2**.
-- The bundled Pokédex covers **Gen 1–2 names** for autocomplete/matching plus a
-  cross-generation **legendary** list. Add later gens to
-  `js/pokedex.js → POKEDEX_NAMES` to extend it.
-- OCR quality depends on the screenshot. Clear, uncropped detail-screen shots
-  work best; you can always correct any field before saving.
+- **Text OCR** reliably reads **name, CP and HP** from the detail screen. Quality
+  depends on the screenshot — clear, uncropped shots work best, and you can
+  always correct any field before saving.
+- **IV scanning is experimental.** The IV stats are shown in-game as *bars*, not
+  numbers, so the scanner measures the red fill of each bar from an appraisal
+  screenshot. Results vary across devices/themes/resolutions, so always confirm
+  the values on the clickable bars (which are the reliable input). Production-
+  grade IV reading (à la Poke Genie) is a much larger, ML-assisted effort.
+- The bundled Pokédex covers **Gen 1–8 names** (905) plus a cross-generation
+  **legendary** list. Add later gens to `js/pokedex.js → POKEDEX_NAMES` to
+  extend it.
 
 ## Project layout
 
@@ -73,10 +80,11 @@ pokemon-tool/
 ├── index.html        # markup + CDN script tags
 ├── css/styles.css    # styling (dark, Pokémon-themed)
 └── js/
-    ├── pokedex.js    # name dataset, fuzzy matching, legendary set
+    ├── pokedex.js    # name dataset (Gen 1–8), fuzzy matching, legendary set
     ├── storage.js    # localStorage persistence + export/import
-    ├── ocr.js        # Tesseract.js OCR + field parsing
-    └── app.js        # UI, rendering, inventory logic
+    ├── ocr.js        # Tesseract.js OCR + field parsing (name/CP/HP)
+    ├── ivscan.js     # experimental appraisal-bar IV reader (pixel analysis)
+    └── app.js        # UI, rendering, IV picker, inventory logic
 ```
 
 > Not affiliated with Niantic, Scopely, or The Pokémon Company. Pokémon and

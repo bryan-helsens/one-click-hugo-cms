@@ -40,6 +40,10 @@
     fName: $("#f-name"),
     fCp: $("#f-cp"),
     fHp: $("#f-hp"),
+    addIv: $("#add-iv"),
+    editIv: $("#edit-iv"),
+    ivInput: $("#iv-input"),
+    ivScanStatus: $("#iv-scan-status"),
     exportBtn: $("#btn-export"),
     importFile: $("#import-file")
   };
@@ -47,8 +51,118 @@
   // ---- Init ----
   function init() {
     populatePokedexDatalist();
+    buildIvPicker(els.addIv);
+    buildIvPicker(els.editIv);
     bindEvents();
     render();
+  }
+
+  // ---- IV picker (clickable 15-segment bars for Atk / Def / HP) ----
+  const IV_STATS = [
+    ["atk", "ATK"],
+    ["def", "DEF"],
+    ["sta", "HP"]
+  ];
+
+  function buildIvPicker(root) {
+    if (!root) return;
+    const rows = IV_STATS.map(([key, label]) => {
+      const segs = Array.from(
+        { length: 15 },
+        (_, i) =>
+          `<button type="button" class="iv-seg" data-val="${i + 1}" ` +
+          `aria-label="${label} ${i + 1}"></button>`
+      ).join("");
+      return (
+        `<div class="iv-row"><span class="iv-label">${label}</span>` +
+        `<div class="iv-bar" data-stat="${key}" data-value="0">${segs}</div>` +
+        `<span class="iv-val">0</span></div>`
+      );
+    }).join("");
+    root.innerHTML =
+      rows +
+      '<div class="iv-percent">IV: <b class="iv-total">—</b>' +
+      '<button type="button" class="clear-iv">clear</button></div>';
+
+    root.addEventListener("click", (e) => {
+      const seg = e.target.closest(".iv-seg");
+      if (seg) {
+        const bar = seg.closest(".iv-bar");
+        const val = parseInt(seg.dataset.val, 10);
+        const cur = parseInt(bar.dataset.value, 10);
+        setBar(bar, cur === val ? val - 1 : val);
+        root.dataset.touched = "1";
+        updatePercent(root);
+      } else if (e.target.closest(".clear-iv")) {
+        resetIvPicker(root);
+      }
+    });
+  }
+
+  function setBar(bar, value) {
+    value = Math.max(0, Math.min(15, value));
+    bar.dataset.value = value;
+    bar.querySelectorAll(".iv-seg").forEach((s, i) => {
+      const on = i < value;
+      s.classList.toggle("filled", on);
+      s.classList.toggle("perfect", on && value === 15);
+    });
+    const valEl = bar.parentElement.querySelector(".iv-val");
+    if (valEl) valEl.textContent = value;
+  }
+
+  function setIvPicker(root, vals) {
+    let any = false;
+    IV_STATS.forEach(([stat]) => {
+      const bar = root.querySelector(`.iv-bar[data-stat="${stat}"]`);
+      if (!bar) return;
+      const v = vals[stat];
+      setBar(bar, v || 0);
+      if (v != null) any = true;
+    });
+    root.dataset.touched = any ? "1" : "0";
+    updatePercent(root);
+  }
+
+  function resetIvPicker(root) {
+    IV_STATS.forEach(([stat]) => {
+      const bar = root.querySelector(`.iv-bar[data-stat="${stat}"]`);
+      if (bar) setBar(bar, 0);
+    });
+    root.dataset.touched = "0";
+    updatePercent(root);
+  }
+
+  function updatePercent(root) {
+    const totalEl = root.querySelector(".iv-total");
+    if (!totalEl) return;
+    if (root.dataset.touched !== "1") {
+      totalEl.textContent = "—";
+      return;
+    }
+    const sum = IV_STATS.reduce((acc, [stat]) => {
+      const bar = root.querySelector(`.iv-bar[data-stat="${stat}"]`);
+      return acc + (bar ? parseInt(bar.dataset.value, 10) : 0);
+    }, 0);
+    totalEl.textContent = `${Math.round((sum / 45) * 100)}% (${sum}/45)`;
+  }
+
+  /** Read IV values from a picker, or nulls if the user never touched it. */
+  function readIvPicker(root) {
+    if (!root || root.dataset.touched !== "1") {
+      return { ivAtk: null, ivDef: null, ivSta: null };
+    }
+    const get = (stat) => {
+      const bar = root.querySelector(`.iv-bar[data-stat="${stat}"]`);
+      return bar ? parseInt(bar.dataset.value, 10) : null;
+    };
+    return { ivAtk: get("atk"), ivDef: get("def"), ivSta: get("sta") };
+  }
+
+  /** IV percentage for a stored Pokémon, or null if IVs are unknown. */
+  function ivPercent(p) {
+    if (p.ivAtk == null || p.ivDef == null || p.ivSta == null) return null;
+    return Math.round(((p.ivAtk + p.ivDef + p.ivSta) / 45) * 100);
   }
 
   function populatePokedexDatalist() {
@@ -76,8 +190,16 @@
       if (group.length < 2) return;
       group.forEach((p) => dupIds.add(p.id));
 
-      // Keep the highest-CP copy; suggest transferring weaker, unprotected dupes.
-      const sorted = [...group].sort((a, b) => (b.cp || 0) - (a.cp || 0));
+      // Keep the best copy (highest IV%, then CP); suggest transferring the
+      // weaker, unprotected dupes.
+      const sorted = [...group].sort((a, b) => {
+        const ivA = ivPercent(a);
+        const ivB = ivPercent(b);
+        if (ivA != null && ivB != null && ivA !== ivB) return ivB - ivA;
+        if (ivA != null && ivB == null) return -1;
+        if (ivA == null && ivB != null) return 1;
+        return (b.cp || 0) - (a.cp || 0);
+      });
       sorted.slice(1).forEach((p) => {
         const isProtected = PROTECTED_FLAGS.some((f) => p[f]);
         if (!isProtected) transferIds.add(p.id);
@@ -151,6 +273,7 @@
       "added-asc": (a, b) => (a.added || 0) - (b.added || 0),
       "cp-desc": (a, b) => (b.cp || 0) - (a.cp || 0),
       "cp-asc": (a, b) => (a.cp || 0) - (b.cp || 0),
+      "iv-desc": (a, b) => (ivPercent(b) ?? -1) - (ivPercent(a) ?? -1),
       "name-asc": (a, b) => a.name.localeCompare(b.name),
       "name-desc": (a, b) => b.name.localeCompare(a.name)
     }[sort];
@@ -175,6 +298,7 @@
         <div class="poke-stats">
           <span>CP <b>${p.cp || "—"}</b></span>
           <span>HP <b>${p.hp || "—"}</b></span>
+          ${ivPercent(p) != null ? `<span class="poke-iv">IV <b>${ivPercent(p)}%</b></span>` : ""}
         </div>
         ${tags.length ? `<div class="poke-tags">${tags.join("")}</div>` : ""}
         ${p.notes ? `<div class="poke-notes">${escapeHTML(p.notes)}</div>` : ""}
@@ -216,6 +340,11 @@
     });
     setupDragDrop();
 
+    // IV appraisal scan
+    els.ivInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) handleIvScan(e.target.files[0]);
+    });
+
     // Export / import
     els.exportBtn.addEventListener("click", exportJSON);
     els.importFile.addEventListener("change", (e) => {
@@ -233,7 +362,7 @@
 
   function onAddSubmit(e) {
     e.preventDefault();
-    const data = readFormData(els.addForm);
+    const data = { ...readFormData(els.addForm), ...readIvPicker(els.addIv) };
     if (!data.name) return;
 
     // Auto-tag legendaries we recognise.
@@ -242,7 +371,9 @@
     inventory.push({ id: Storage.newId(), added: Date.now(), ...data });
     Storage.save(inventory);
     els.addForm.reset();
+    resetIvPicker(els.addIv);
     clearOcrUI();
+    if (els.ivScanStatus) els.ivScanStatus.textContent = "";
     render();
     els.fName.focus();
   }
@@ -276,6 +407,7 @@
     Object.keys(TAG_META).forEach((flag) => {
       f.elements[flag].checked = !!p[flag];
     });
+    setIvPicker(els.editIv, { atk: p.ivAtk, def: p.ivDef, sta: p.ivSta });
     els.editModal.hidden = false;
   }
 
@@ -288,7 +420,7 @@
     const id = els.editForm.elements.id.value;
     const idx = inventory.findIndex((x) => x.id === id);
     if (idx === -1) return;
-    const data = readFormData(els.editForm);
+    const data = { ...readFormData(els.editForm), ...readIvPicker(els.editIv) };
     if (!data.name) return;
     inventory[idx] = { ...inventory[idx], ...data };
     Storage.save(inventory);
@@ -311,6 +443,32 @@
       applyParsedToForm(parsed);
     } catch (err) {
       setStatus("⚠️ " + err.message, "error");
+    }
+  }
+
+  // ---- IV appraisal scan flow ----
+  async function handleIvScan(file) {
+    const status = els.ivScanStatus;
+    if (status) status.textContent = "Scanning bars…";
+    try {
+      const iv = await IVScan.scan(file);
+      if (iv.atk == null || iv.def == null || iv.sta == null) {
+        if (status) {
+          status.textContent =
+            "Couldn't read the bars — set them by tapping below.";
+        }
+        return;
+      }
+      setIvPicker(els.addIv, iv);
+      if (status) {
+        const pct = Math.round(((iv.atk + iv.def + iv.sta) / 45) * 100);
+        status.textContent =
+          `Read ~${pct}% (${iv.atk}/${iv.def}/${iv.sta}) — please double-check.`;
+      }
+    } catch (err) {
+      if (status) status.textContent = "⚠️ " + err.message;
+    } finally {
+      els.ivInput.value = "";
     }
   }
 

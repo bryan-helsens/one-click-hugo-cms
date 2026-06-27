@@ -208,6 +208,78 @@ input[type="search"], select {
 .flags legend { color: var(--muted); font-size: 0.85rem; padding: 0 6px; }
 .flags label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .form-actions { display: flex; gap: 10px; flex: 1 1 100%; }
+.btn-sm { padding: 6px 12px; font-size: 0.9rem; }
+
+/* IV picker */
+.iv-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  flex: 1 1 100%;
+  margin: 0;
+}
+.iv-section legend { color: var(--muted); font-size: 0.85rem; padding: 0 6px; }
+.iv-scan {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.iv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.iv-row .iv-label {
+  width: 38px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.iv-bar {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+.iv-seg {
+  flex: 1;
+  height: 18px;
+  min-width: 6px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.iv-seg:hover { border-color: var(--primary); }
+.iv-seg.filled { background: #e85d5d; border-color: #e85d5d; }
+.iv-seg.filled.perfect { background: #ffcb05; border-color: #ffcb05; }
+.iv-row .iv-val {
+  width: 26px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.iv-percent {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.iv-percent b { color: var(--text); font-size: 1.05rem; }
+.iv-percent .clear-iv {
+  margin-left: 12px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+.poke-iv { font-size: 0.85rem; }
+.poke-iv b { color: var(--primary); }
 
 /* Inventory toolbar */
 .inventory-toolbar {
