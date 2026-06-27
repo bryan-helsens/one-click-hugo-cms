@@ -63,26 +63,34 @@ const OCR = {
     return null;
   },
 
-  /** HP shows as "X / Y" (current / max) on the detail screen. */
+  /**
+   * HP on the detail screen reads "135 / 135 HP" — the label comes AFTER the
+   * numbers — so anchor on that first, then fall back to looser patterns.
+   */
   parseHP(text) {
-    // Prefer an explicit "HP" label if present.
+    const ok = (n) => Number.isFinite(n) && n >= 1 && n <= 600;
+
+    // "135 / 135 HP" — the real GO layout; take the max (total) side.
+    const suffix = text.match(/(\d{1,3})\s*\/\s*(\d{1,3})\s*HP/i);
+    if (suffix && ok(parseInt(suffix[2], 10))) return parseInt(suffix[2], 10);
+
+    // Reverse order "HP 135 / 135".
     const labeled = text.match(/HP[^0-9]{0,4}(\d{1,3})\s*\/\s*(\d{1,3})/i);
-    if (labeled) {
-      const hp = parseInt(labeled[2], 10);
-      if (hp >= 1 && hp <= 600) return hp;
-    }
-    // Otherwise the first "n / n" pair where both sides match (full health).
+    if (labeled && ok(parseInt(labeled[2], 10))) return parseInt(labeled[2], 10);
+
+    // Any "n / n" pair where both sides match (full health).
     const pairs = [...text.matchAll(/(\d{1,3})\s*\/\s*(\d{1,3})/g)];
     for (const p of pairs) {
       const a = parseInt(p[1], 10);
       const b = parseInt(p[2], 10);
-      if (a === b && b >= 1 && b <= 600) return b;
+      if (a === b && ok(b)) return b;
     }
+    // "135 HP" with the slash dropped by OCR.
+    const single = text.match(/(\d{1,3})\s*HP/i);
+    if (single && ok(parseInt(single[1], 10))) return parseInt(single[1], 10);
+
     // Fall back to the max side of the first plausible pair.
-    if (pairs.length) {
-      const b = parseInt(pairs[0][2], 10);
-      if (b >= 1 && b <= 600) return b;
-    }
+    if (pairs.length && ok(parseInt(pairs[0][2], 10))) return parseInt(pairs[0][2], 10);
     return null;
   },
 
