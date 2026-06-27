@@ -178,32 +178,45 @@ class CaptureService : Service() {
         }
     }
 
-    /** Stage 2: OCR the frame, parse name/CP/HP, and store an inventory record. */
+    /**
+     * OCR the frame for name/CP/HP, read the IV bars from the same frame, and
+     * store an inventory record. The IV pixel work runs off the main thread.
+     */
     private fun recognize(bitmap: Bitmap) {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { visionText ->
                 val res = ScreenParser.parse(visionText.text)
-                val legendary = res.name != null && Pokedex.isLegendary(res.name)
-                InventoryStore.add(
-                    this,
-                    PokemonRecord(
-                        name = res.name,
-                        cp = res.cp,
-                        hp = res.hp,
-                        legendary = legendary,
-                        ts = System.currentTimeMillis()
+                Thread {
+                    val iv = runCatching { IvScanner.scan(bitmap) }
+                        .getOrDefault(IvScanner.IvResult(null, null, null, 0.0))
+                    val legendary = res.name != null && Pokedex.isLegendary(res.name)
+                    InventoryStore.add(
+                        this,
+                        PokemonRecord(
+                            name = res.name,
+                            cp = res.cp,
+                            hp = res.hp,
+                            ivAtk = iv.atk,
+                            ivDef = iv.def,
+                            ivSta = iv.sta,
+                            legendary = legendary,
+                            ts = System.currentTimeMillis()
+                        )
                     )
-                )
-                toast(
-                    getString(
-                        R.string.saved_record,
-                        res.name ?: "?",
-                        res.cp?.toString() ?: "?",
-                        res.hp?.toString() ?: "?"
+                    val ivPct = if (iv.complete)
+                        " · IV ${Math.round((iv.atk!! + iv.def!! + iv.sta!!) / 45.0 * 100)}%"
+                    else ""
+                    toast(
+                        getString(
+                            R.string.saved_record,
+                            res.name ?: "?",
+                            res.cp?.toString() ?: "?",
+                            res.hp?.toString() ?: "?"
+                        ) + ivPct
                     )
-                )
-                bitmap.recycle()
+                    bitmap.recycle()
+                }.start()
             }
             .addOnFailureListener { e ->
                 toast(getString(R.string.capture_error, e.message ?: ""))

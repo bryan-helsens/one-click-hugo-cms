@@ -11,7 +11,9 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import com.pokeinventory.scanner.databinding.ActivityMainBinding
+import java.io.File
 
 /**
  * Entry screen. Walks the user through the two permissions the capture needs
@@ -50,6 +52,26 @@ class MainActivity : AppCompatActivity() {
             stopService(Intent(this, CaptureService::class.java))
             refresh()
         }
+        binding.btnExport.setOnClickListener { exportInventory() }
+    }
+
+    /** Write the inventory JSON to a shareable file and fire a share sheet. */
+    private fun exportInventory() {
+        val json = InventoryStore.exportJson(this)
+        if (json.trim() == "[]" || json.isBlank()) {
+            Toast.makeText(this, R.string.nothing_to_export, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val dir = File(cacheDir, "exports").apply { mkdirs() }
+        val file = File(dir, "pokeinventory-export.json")
+        file.writeText(json)
+        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(share, getString(R.string.export_chooser)))
     }
 
     override fun onResume() {
@@ -104,7 +126,10 @@ class MainActivity : AppCompatActivity() {
         val rows = records.map { r ->
             val name = r.name ?: "?"
             val star = if (r.legendary) " 👑" else ""
-            "$name$star — CP ${r.cp ?: "?"} · HP ${r.hp ?: "?"}"
+            val iv = if (r.ivAtk != null && r.ivDef != null && r.ivSta != null)
+                " · IV ${Math.round((r.ivAtk + r.ivDef + r.ivSta) / 45.0 * 100)}%"
+            else ""
+            "$name$star — CP ${r.cp ?: "?"} · HP ${r.hp ?: "?"}$iv"
         }
         binding.txtCount.text = getString(R.string.captures_count, rows.size)
         binding.listCaptures.adapter =

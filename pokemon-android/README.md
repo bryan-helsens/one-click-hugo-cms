@@ -5,9 +5,23 @@ Pokémon **near-automatic**: a floating button sits on top of Pokémon GO, you o
 a Pokémon's appraisal screen, tap once, and it reads **name / CP / HP / IVs** and
 saves them — no screenshots, no leaving the game.
 
-> **Status: Stage 2.** Platform plumbing (overlay + screen capture) plus
-> on-device OCR — a tap reads **name / CP / HP** and stores a record. IV reading
-> (the red bars) lands in Stage 3. See the roadmap below.
+> **Status: Stage 3 (feature-complete MVP).** A tap over a Pokémon reads
+> **name / CP / HP** (OCR) **and the IV bars**, auto-tags legendaries, stores a
+> record, and the inventory exports to JSON for the web app.
+
+## Install the prebuilt APK (no Android Studio)
+
+Every push builds the app in CI and publishes the APK to the **`android-latest`
+release**. On your phone:
+
+1. Open the repo's **Releases** → **PokéInventory Scanner — latest debug build**.
+2. Download **`app-debug.apk`**.
+3. Open it; when prompted, allow **install from unknown sources** for your
+   browser / file manager.
+4. Launch the app and grant the two permissions (overlay + screen capture).
+
+> It's a debug-signed APK (fine for personal sideloading). If your phone warns
+> that Play Protect doesn't recognise it, choose "install anyway".
 
 ## Why a native app (and what's still not possible)
 
@@ -67,8 +81,8 @@ no SDK bundled).
 2. Let Gradle sync (it downloads the Android Gradle Plugin + SDK as needed). The
    Gradle **wrapper jar / `gradlew` script aren't committed** (the build sandbox
    couldn't reach `services.gradle.org`) — Android Studio recreates them on first
-   sync automatically. The Gradle version is pinned to **8.7** in
-   `gradle/wrapper/gradle-wrapper.properties` (matches AGP 8.5.2). If it asks to
+   sync automatically. The Gradle version is pinned to **8.6** in
+   `gradle/wrapper/gradle-wrapper.properties` (matches AGP 8.4.2). If it asks to
    install an SDK platform (API 34), accept.
 3. Plug in your phone with **USB debugging** on (Settings → Developer options), or
    use an emulator. Press **Run ▶**.
@@ -86,8 +100,9 @@ To install without a cable: **Build → Build APK**, then transfer
 - [x] **Stage 2** — on-device ML Kit OCR of name/CP/HP; fuzzy name-matching
       against the bundled Pokédex (Gen 1–9, shared with the web app); legendary
       auto-tagging; JSON inventory store.
-- [ ] **Stage 3** — Kotlin IV-bar scanner (port of `ivscan.js`), IV display, and
-      JSON export/import compatible with the web app.
+- [x] **Stage 3** — Kotlin IV-bar scanner (port of `ivscan.js`); a tap reads CP/
+      HP/name **and** IVs from the same frame; IV% shown in the list; JSON export
+      (share sheet) compatible with the web app's import.
 - [ ] **Stage 4 (maybe)** — auto-detect the appraisal screen so it captures
       without a tap as you flip through Pokémon.
 

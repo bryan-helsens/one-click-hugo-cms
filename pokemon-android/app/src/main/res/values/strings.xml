@@ -6,6 +6,8 @@
     <string name="overlay_ok">✓ Overlay permission granted</string>
     <string name="captures_count">Pokémon captured: %1$d</string>
     <string name="scan_button">Scan</string>
+    <string name="nothing_to_export">Nothing to export yet.</string>
+    <string name="export_chooser">Export inventory JSON</string>
 
     <!-- Toasts -->
     <string name="need_overlay">Please grant the overlay permission first.</string>

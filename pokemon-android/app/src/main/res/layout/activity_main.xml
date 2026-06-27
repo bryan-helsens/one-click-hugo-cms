@@ -39,6 +39,13 @@
         android:layout_marginTop="8dp"
         android:text="Stop scanning" />
 
+    <Button
+        android:id="@+id/btnExport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Export inventory (JSON)" />
+
     <TextView
         android:id="@+id/txtCount"
         android:layout_width="match_parent"
