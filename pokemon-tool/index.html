@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PokéInventory — Pokémon GO Inventory Manager</title>
+  <meta name="description" content="A screenshot-powered inventory manager for Pokémon GO. Reads CP, HP and name from your screenshots, tracks your collection, and helps you decide what to keep or transfer." />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-inner">
+      <h1 class="logo">⚡ PokéInventory</h1>
+      <nav class="header-actions">
+        <button id="btn-export" class="btn btn-ghost" type="button">Export</button>
+        <label class="btn btn-ghost" for="import-file">Import</label>
+        <input id="import-file" type="file" accept="application/json" hidden />
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Stats summary -->
+    <section id="summary" class="summary-grid" aria-label="Collection summary"></section>
+
+    <!-- Add / OCR panel -->
+    <section class="panel">
+      <h2>Add a Pokémon</h2>
+      <p class="muted">
+        Upload a screenshot of a Pokémon's detail screen and we'll read the
+        <strong>name</strong>, <strong>CP</strong> and <strong>HP</strong> automatically.
+        Check the values before saving — OCR isn't perfect.
+      </p>
+
+      <div class="ocr-zone" id="ocr-zone">
+        <input id="screenshot-input" type="file" accept="image/*" capture="environment" hidden />
+        <label for="screenshot-input" class="ocr-drop" id="ocr-drop">
+          <span class="ocr-drop-icon">📸</span>
+          <span class="ocr-drop-text">Tap to take a photo or upload a screenshot</span>
+          <span class="ocr-drop-hint">PNG / JPG — your image never leaves this device</span>
+        </label>
+        <div id="ocr-status" class="ocr-status" hidden></div>
+        <img id="ocr-preview" class="ocr-preview" alt="Screenshot preview" hidden />
+      </div>
+
+      <form id="add-form" class="add-form" autocomplete="off">
+        <div class="field">
+          <label for="f-name">Name</label>
+          <input id="f-name" name="name" list="pokedex-list" placeholder="e.g. Charizard" required />
+          <datalist id="pokedex-list"></datalist>
+        </div>
+        <div class="field field-sm">
+          <label for="f-cp">CP</label>
+          <input id="f-cp" name="cp" type="number" min="10" max="6000" placeholder="0" />
+        </div>
+        <div class="field field-sm">
+          <label for="f-hp">HP</label>
+          <input id="f-hp" name="hp" type="number" min="1" max="600" placeholder="0" />
+        </div>
+
+        <fieldset class="flags">
+          <legend>Tags</legend>
+          <label><input type="checkbox" name="shiny" /> ✨ Shiny</label>
+          <label><input type="checkbox" name="lucky" /> 🍀 Lucky</label>
+          <label><input type="checkbox" name="shadow" /> 🌑 Shadow</label>
+          <label><input type="checkbox" name="favorite" /> ⭐ Favorite (protect)</label>
+          <label><input type="checkbox" name="legendary" /> 👑 Legendary</label>
+        </fieldset>
+
+        <div class="field field-grow">
+          <label for="f-notes">Notes</label>
+          <input id="f-notes" name="notes" placeholder="Optional — e.g. 'best for Great League'" />
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Add to inventory</button>
+          <button type="reset" class="btn btn-ghost">Clear</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Inventory -->
+    <section class="panel">
+      <div class="inventory-toolbar">
+        <h2>Inventory <span id="inv-count" class="count-badge">0</span></h2>
+        <div class="toolbar-controls">
+          <input id="search" type="search" placeholder="Search name or notes…" aria-label="Search inventory" />
+          <select id="filter-tag" aria-label="Filter by tag">
+            <option value="">All tags</option>
+            <option value="shiny">✨ Shiny</option>
+            <option value="lucky">🍀 Lucky</option>
+            <option value="shadow">🌑 Shadow</option>
+            <option value="favorite">⭐ Favorite</option>
+            <option value="legendary">👑 Legendary</option>
+            <option value="duplicate">🔁 Duplicates</option>
+            <option value="transfer">🗑️ Transfer suggestions</option>
+          </select>
+          <select id="sort-by" aria-label="Sort by">
+            <option value="added-desc">Newest first</option>
+            <option value="added-asc">Oldest first</option>
+            <option value="cp-desc">CP: high → low</option>
+            <option value="cp-asc">CP: low → high</option>
+            <option value="name-asc">Name: A → Z</option>
+            <option value="name-desc">Name: Z → A</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="inventory" class="inventory-grid" aria-live="polite"></div>
+      <p id="empty-state" class="empty-state" hidden>
+        No Pokémon yet. Upload a screenshot above to add your first one!
+      </p>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container">
+      <p class="muted small">
+        PokéInventory reads only the screenshots you upload — it never connects to your
+        Pokémon GO account. Data is stored locally in your browser.
+        Not affiliated with Niantic, Scopely or The Pokémon Company.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Edit modal -->
+  <div id="edit-modal" class="modal" hidden>
+    <div class="modal-card">
+      <h3>Edit Pokémon</h3>
+      <form id="edit-form" class="add-form">
+        <input type="hidden" name="id" />
+        <div class="field">
+          <label for="e-name">Name</label>
+          <input id="e-name" name="name" list="pokedex-list" required />
+        </div>
+        <div class="field field-sm">
+          <label for="e-cp">CP</label>
+          <input id="e-cp" name="cp" type="number" min="10" max="6000" />
+        </div>
+        <div class="field field-sm">
+          <label for="e-hp">HP</label>
+          <input id="e-hp" name="hp" type="number" min="1" max="600" />
+        </div>
+        <fieldset class="flags">
+          <legend>Tags</legend>
+          <label><input type="checkbox" name="shiny" /> ✨ Shiny</label>
+          <label><input type="checkbox" name="lucky" /> 🍀 Lucky</label>
+          <label><input type="checkbox" name="shadow" /> 🌑 Shadow</label>
+          <label><input type="checkbox" name="favorite" /> ⭐ Favorite</label>
+          <label><input type="checkbox" name="legendary" /> 👑 Legendary</label>
+        </fieldset>
+        <div class="field field-grow">
+          <label for="e-notes">Notes</label>
+          <input id="e-notes" name="notes" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tesseract.js for in-browser OCR (loaded from CDN; app still works without it for manual entry) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="js/pokedex.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/ocr.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
