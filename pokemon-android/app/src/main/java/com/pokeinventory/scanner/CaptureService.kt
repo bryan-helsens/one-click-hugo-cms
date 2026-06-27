@@ -24,6 +24,9 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.Toast
 import androidx.core.app.ServiceCompat
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 /**
  * Foreground service that owns the screen-capture session and the floating
@@ -32,10 +35,10 @@ import androidx.core.app.ServiceCompat
  * Lifecycle: MainActivity hands us the MediaProjection permission result; we go
  * foreground (required for type=mediaProjection), build a VirtualDisplay that
  * mirrors the screen into an ImageReader, and show an overlay button. Each tap
- * grabs the latest frame and saves it via [CaptureStore].
+ * grabs the latest frame, OCRs it (ML Kit) into name/CP/HP via [ScreenParser],
+ * and stores a record via [InventoryStore].
  *
- * Stage 2/3 will feed the captured Bitmap to ML Kit OCR + the IV scanner before
- * saving, instead of just storing the raw screenshot.
+ * Stage 3 will additionally feed the Bitmap to the IV-bar scanner before saving.
  */
 class CaptureService : Service() {
 
@@ -82,6 +85,7 @@ class CaptureService : Service() {
             return START_NOT_STICKY
         }
 
+        Pokedex.init(applicationContext)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         readScreenMetrics()
         startProjection(resultCode, data)
@@ -166,15 +170,45 @@ class CaptureService : Service() {
             bitmap.copyPixelsFromBuffer(plane.buffer)
             val cropped = Bitmap.createBitmap(bitmap, 0, 0, width, height)
             bitmap.recycle()
-
-            val file = CaptureStore.save(this, cropped)
-            cropped.recycle()
-            toast(getString(R.string.saved_as, file.name))
+            recognize(cropped)
         } catch (e: Exception) {
             toast(getString(R.string.capture_error, e.message ?: ""))
         } finally {
             image.close()
         }
+    }
+
+    /** Stage 2: OCR the frame, parse name/CP/HP, and store an inventory record. */
+    private fun recognize(bitmap: Bitmap) {
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        recognizer.process(InputImage.fromBitmap(bitmap, 0))
+            .addOnSuccessListener { visionText ->
+                val res = ScreenParser.parse(visionText.text)
+                val legendary = res.name != null && Pokedex.isLegendary(res.name)
+                InventoryStore.add(
+                    this,
+                    PokemonRecord(
+                        name = res.name,
+                        cp = res.cp,
+                        hp = res.hp,
+                        legendary = legendary,
+                        ts = System.currentTimeMillis()
+                    )
+                )
+                toast(
+                    getString(
+                        R.string.saved_record,
+                        res.name ?: "?",
+                        res.cp?.toString() ?: "?",
+                        res.hp?.toString() ?: "?"
+                    )
+                )
+                bitmap.recycle()
+            }
+            .addOnFailureListener { e ->
+                toast(getString(R.string.capture_error, e.message ?: ""))
+                bitmap.recycle()
+            }
     }
 
     private fun buildNotification(): Notification {

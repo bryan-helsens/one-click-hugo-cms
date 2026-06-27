@@ -100,9 +100,14 @@ class MainActivity : AppCompatActivity() {
             if (Settings.canDrawOverlays(this)) getString(R.string.overlay_ok)
             else getString(R.string.grant_overlay)
 
-        val captures = CaptureStore.list(this).map { it.name }
-        binding.txtCount.text = getString(R.string.captures_count, captures.size)
+        val records = InventoryStore.load(this)
+        val rows = records.map { r ->
+            val name = r.name ?: "?"
+            val star = if (r.legendary) " 👑" else ""
+            "$name$star — CP ${r.cp ?: "?"} · HP ${r.hp ?: "?"}"
+        }
+        binding.txtCount.text = getString(R.string.captures_count, rows.size)
         binding.listCaptures.adapter =
-            ArrayAdapter(this, android.R.layout.simple_list_item_1, captures)
+            ArrayAdapter(this, android.R.layout.simple_list_item_1, rows)
     }
 }

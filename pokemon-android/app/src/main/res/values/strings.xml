@@ -4,7 +4,7 @@
     <!-- Buttons / labels -->
     <string name="grant_overlay">1 · Grant \"Display over other apps\"</string>
     <string name="overlay_ok">✓ Overlay permission granted</string>
-    <string name="captures_count">Captured frames: %1$d</string>
+    <string name="captures_count">Pokémon captured: %1$d</string>
     <string name="scan_button">Scan</string>
 
     <!-- Toasts -->
@@ -14,6 +14,7 @@
     <string name="scanning_started">Scanning started — open Pokémon GO.</string>
     <string name="no_frame">No frame available yet — try again.</string>
     <string name="saved_as">Saved %1$s</string>
+    <string name="saved_record">Saved %1$s · CP %2$s · HP %3$s</string>
     <string name="capture_error">Capture failed: %1$s</string>
 
     <!-- Foreground notification -->

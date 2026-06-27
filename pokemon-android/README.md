@@ -5,9 +5,9 @@ Pokémon **near-automatic**: a floating button sits on top of Pokémon GO, you o
 a Pokémon's appraisal screen, tap once, and it reads **name / CP / HP / IVs** and
 saves them — no screenshots, no leaving the game.
 
-> **Status: Stage 1 scaffold (skeleton).** This proves the platform plumbing
-> (overlay + screen capture + foreground service). OCR and IV reading land in
-> Stage 2/3. See the roadmap below.
+> **Status: Stage 2.** Platform plumbing (overlay + screen capture) plus
+> on-device OCR — a tap reads **name / CP / HP** and stores a record. IV reading
+> (the red bars) lands in Stage 3. See the roadmap below.
 
 ## Why a native app (and what's still not possible)
 
@@ -81,11 +81,13 @@ To install without a cable: **Build → Build APK**, then transfer
 
 ## Roadmap
 
-- [x] **Stage 1** — overlay button, screen-capture permission, capture frame to
-      file, basic list. *(this scaffold)*
-- [ ] **Stage 2** — ML Kit OCR of name/CP/HP from the captured frame.
-- [ ] **Stage 3** — Kotlin IV-bar scanner, inventory model, JSON export/import
-      shared with the web app.
+- [x] **Stage 1** — overlay button, screen-capture permission, capture frame,
+      basic list.
+- [x] **Stage 2** — on-device ML Kit OCR of name/CP/HP; fuzzy name-matching
+      against the bundled Pokédex (Gen 1–9, shared with the web app); legendary
+      auto-tagging; JSON inventory store.
+- [ ] **Stage 3** — Kotlin IV-bar scanner (port of `ivscan.js`), IV display, and
+      JSON export/import compatible with the web app.
 - [ ] **Stage 4 (maybe)** — auto-detect the appraisal screen so it captures
       without a tap as you flip through Pokémon.
 

@@ -42,5 +42,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    // Stage 2 will add: com.google.mlkit:text-recognition
+    // Stage 2: on-device Latin text recognition (bundled model, offline)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 }
