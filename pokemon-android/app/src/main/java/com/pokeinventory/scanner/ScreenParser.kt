@@ -27,7 +27,7 @@ object ScreenParser {
 
     private fun parseCP(text: String): Int? {
         val cp = cpRegex.find(text)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: return null
-        return if (cp in 10..6000) cp else null
+        return if (cp in 10..9000) cp else null // headroom for Mega/Primal
     }
 
     private fun parseHP(text: String): Int? {

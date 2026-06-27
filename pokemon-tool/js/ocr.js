@@ -58,7 +58,7 @@ const OCR = {
     const m = text.match(/\b[CGO][PR]\s*[:.]?\s*(\d{2,5})\b/i);
     if (m) {
       const cp = parseInt(m[1], 10);
-      if (cp >= 10 && cp <= 6000) return cp;
+      if (cp >= 10 && cp <= 9000) return cp; // headroom for Mega/Primal
     }
     return null;
   },

@@ -192,6 +192,7 @@
     const byName = {};
     list.forEach((p) => {
       const key = normalizeName(p.name);
+      if (!key) return; // unnamed records aren't duplicates of one another
       (byName[key] = byName[key] || []).push(p);
     });
 
@@ -283,7 +284,7 @@
 
     let out = list.filter((p) => {
       if (q) {
-        const hay = (p.name + " " + (p.notes || "")).toLowerCase();
+        const hay = ((p.name || "") + " " + (p.notes || "")).toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (ivMin != null) {
@@ -304,8 +305,8 @@
       "cp-desc": (a, b) => (b.cp || 0) - (a.cp || 0),
       "cp-asc": (a, b) => (a.cp || 0) - (b.cp || 0),
       "iv-desc": (a, b) => (ivPercent(b) ?? -1) - (ivPercent(a) ?? -1),
-      "name-asc": (a, b) => a.name.localeCompare(b.name),
-      "name-desc": (a, b) => b.name.localeCompare(a.name)
+      "name-asc": (a, b) => (a.name || "").localeCompare(b.name || ""),
+      "name-desc": (a, b) => (b.name || "").localeCompare(a.name || "")
     }[sort];
     return cmp ? out.sort(cmp) : out;
   }
@@ -325,8 +326,8 @@
 
     return `
       <article class="${classes.join(" ")}" data-id="${p.id}">
-        <input type="checkbox" class="poke-select" data-id="${p.id}" ${selected.has(p.id) ? "checked" : ""} aria-label="Select ${escapeHTML(p.name)}" />
-        <div class="poke-name">${escapeHTML(p.name)}</div>
+        <input type="checkbox" class="poke-select" data-id="${p.id}" ${selected.has(p.id) ? "checked" : ""} aria-label="Select ${escapeHTML(p.name || "unnamed")}" />
+        <div class="poke-name">${escapeHTML(p.name || "❓ Unnamed")}</div>
         <div class="poke-stats">
           <span>CP <b>${p.cp || "—"}</b></span>
           <span>HP <b>${p.hp || "—"}</b></span>
@@ -703,9 +704,14 @@
         const merge = confirm(
           "OK = merge with your current inventory.\nCancel = replace it entirely."
         );
+        // Keep any record with real data — including scans whose name didn't
+        // OCR (name null), so they can be fixed in the editor instead of lost.
+        const hasData = (p) =>
+          p && (p.name || p.cp != null || p.hp != null ||
+            p.ivAtk != null || p.ivDef != null || p.ivSta != null);
         const cleaned = data
-          .filter((p) => p && p.name)
-          .map((p) => ({ id: p.id || Storage.newId(), added: p.added || Date.now(), ...p }));
+          .filter(hasData)
+          .map((p) => ({ id: p.id || Storage.newId(), added: p.added || p.ts || Date.now(), ...p }));
         inventory = merge ? inventory.concat(cleaned) : cleaned;
         Storage.save(inventory);
         render();
