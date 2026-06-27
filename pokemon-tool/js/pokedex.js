@@ -168,7 +168,31 @@ const POKEDEX_NAMES = [
   "Dracovish", "Arctovish", "Duraludon", "Dreepy", "Drakloak", "Dragapult",
   "Zacian", "Zamazenta", "Eternatus", "Kubfu", "Urshifu", "Zarude",
   "Regieleki", "Regidrago", "Glastrier", "Spectrier", "Calyrex", "Wyrdeer",
-  "Kleavor", "Ursaluna", "Basculegion", "Sneasler", "Overqwil", "Enamorus"
+  "Kleavor", "Ursaluna", "Basculegion", "Sneasler", "Overqwil", "Enamorus",
+
+  // --- Gen 9 (Paldea) ---
+  "Sprigatito", "Floragato", "Meowscarada", "Fuecoco", "Crocalor", "Skeledirge",
+  "Quaxly", "Quaxwell", "Quaquaval", "Lechonk", "Oinkologne", "Tarountula",
+  "Spidops", "Nymble", "Lokix", "Pawmi", "Pawmo", "Pawmot", "Tandemaus",
+  "Maushold", "Fidough", "Dachsbun", "Smoliv", "Dolliv", "Arboliva",
+  "Squawkabilly", "Nacli", "Naclstack", "Garganacl", "Charcadet", "Armarouge",
+  "Ceruledge", "Tadbulb", "Bellibolt", "Wattrel", "Kilowattrel", "Maschiff",
+  "Mabosstiff", "Shroodle", "Grafaiai", "Bramblin", "Brambleghast", "Toedscool",
+  "Toedscruel", "Klawf", "Capsakid", "Scovillain", "Rellor", "Rabsca",
+  "Flittle", "Espathra", "Tinkatink", "Tinkatuff", "Tinkaton", "Wiglett",
+  "Wugtrio", "Bombirdier", "Finizen", "Palafin", "Varoom", "Revavroom",
+  "Cyclizar", "Orthworm", "Glimmet", "Glimmora", "Greavard", "Houndstone",
+  "Flamigo", "Cetoddle", "Cetitan", "Veluza", "Dondozo", "Tatsugiri",
+  "Annihilape", "Clodsire", "Farigiraf", "Dudunsparce", "Kingambit",
+  "Great Tusk", "Scream Tail", "Brute Bonnet", "Flutter Mane", "Slither Wing",
+  "Sandy Shocks", "Iron Treads", "Iron Bundle", "Iron Hands", "Iron Jugulis",
+  "Iron Moth", "Iron Thorns", "Frigibax", "Arctibax", "Baxcalibur",
+  "Gimmighoul", "Gholdengo", "Wo-Chien", "Chien-Pao", "Ting-Lu", "Chi-Yu",
+  "Roaring Moon", "Iron Valiant", "Koraidon", "Miraidon", "Walking Wake",
+  "Iron Leaves", "Dipplin", "Poltchageist", "Sinistcha", "Okidogi",
+  "Munkidori", "Fezandipiti", "Ogerpon", "Archaludon", "Hydrapple",
+  "Gouging Fire", "Raging Bolt", "Iron Boulder", "Iron Crown", "Terapagos",
+  "Pecharunt"
 ];
 
 // Legendary & mythical species (across generations) — used to auto-tag.
@@ -196,7 +220,10 @@ const LEGENDARY_NAMES = new Set([
   "Guzzlord", "Poipole", "Naganadel", "Stakataka", "Blacephalon",
   // Gen 8 / Hisui
   "Zacian", "Zamazenta", "Eternatus", "Kubfu", "Urshifu", "Zarude",
-  "Regieleki", "Regidrago", "Glastrier", "Spectrier", "Calyrex", "Enamorus"
+  "Regieleki", "Regidrago", "Glastrier", "Spectrier", "Calyrex", "Enamorus",
+  // Gen 9 (Paldea) — Treasures of Ruin, box legendaries, Loyal Three, DLC
+  "Wo-Chien", "Chien-Pao", "Ting-Lu", "Chi-Yu", "Koraidon", "Miraidon",
+  "Okidogi", "Munkidori", "Fezandipiti", "Ogerpon", "Terapagos", "Pecharunt"
 ]);
 
 /** Normalize a string for matching: lowercase, strip non-alphanumerics. */

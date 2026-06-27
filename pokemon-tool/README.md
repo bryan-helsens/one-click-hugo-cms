@@ -66,12 +66,13 @@ open it in your mobile browser so you can use the camera to capture screens.
   always correct any field before saving.
 - **IV scanning is experimental.** The IV stats are shown in-game as *bars*, not
   numbers, so the scanner measures the red fill of each bar from an appraisal
-  screenshot. Results vary across devices/themes/resolutions, so always confirm
-  the values on the clickable bars (which are the reliable input). Production-
-  grade IV reading (à la Poke Genie) is a much larger, ML-assisted effort.
-- The bundled Pokédex covers **Gen 1–8 names** (905) plus a cross-generation
-  **legendary** list. Add later gens to `js/pokedex.js → POKEDEX_NAMES` to
-  extend it.
+  screenshot. Detection runs in HSV and validates the three-bar geometry, so it
+  tolerates team-colour backgrounds (blue/yellow, and mostly red/Valor), stray
+  red UI, and different resolutions — but screenshots still vary, so always
+  confirm the values on the clickable bars (the reliable input). Production-grade
+  IV reading (à la Poke Genie) is a much larger, ML-assisted effort.
+- The bundled Pokédex covers the **full National Dex, Gen 1–9** (1025 names) plus
+  a cross-generation **legendary/mythical** list for auto-tagging.
 
 ## Project layout
 
@@ -80,7 +81,7 @@ pokemon-tool/
 ├── index.html        # markup + CDN script tags
 ├── css/styles.css    # styling (dark, Pokémon-themed)
 └── js/
-    ├── pokedex.js    # name dataset (Gen 1–8), fuzzy matching, legendary set
+    ├── pokedex.js    # name dataset (Gen 1–9), fuzzy matching, legendary set
     ├── storage.js    # localStorage persistence + export/import
     ├── ocr.js        # Tesseract.js OCR + field parsing (name/CP/HP)
     ├── ivscan.js     # experimental appraisal-bar IV reader (pixel analysis)
