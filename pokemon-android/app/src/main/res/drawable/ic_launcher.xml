@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple Poké Ball mark -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,18a36,36 0 1,0 0.01,0z" />
+    <path
+        android:fillColor="#E85D5D"
+        android:pathData="M54,18a36,36 0 0,1 36,36L18,54A36,36 0 0,1 54,18z" />
+    <path
+        android:fillColor="#1B2845"
+        android:pathData="M16,50h76v8h-76z" />
+    <path
+        android:fillColor="#1B2845"
+        android:pathData="M54,40a14,14 0 1,0 0.01,0zM54,48a6,6 0 1,1 -0.01,0z" />
+</vector>

@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">PokéInventory Scanner</string>
+
+    <!-- Buttons / labels -->
+    <string name="grant_overlay">1 · Grant \"Display over other apps\"</string>
+    <string name="overlay_ok">✓ Overlay permission granted</string>
+    <string name="captures_count">Captured frames: %1$d</string>
+    <string name="scan_button">Scan</string>
+
+    <!-- Toasts -->
+    <string name="need_overlay">Please grant the overlay permission first.</string>
+    <string name="overlay_granted">Overlay permission already granted.</string>
+    <string name="capture_denied">Screen capture was denied.</string>
+    <string name="scanning_started">Scanning started — open Pokémon GO.</string>
+    <string name="no_frame">No frame available yet — try again.</string>
+    <string name="saved_as">Saved %1$s</string>
+    <string name="capture_error">Capture failed: %1$s</string>
+
+    <!-- Foreground notification -->
+    <string name="channel_name">Screen capture</string>
+    <string name="notif_title">PokéInventory Scanner active</string>
+    <string name="notif_text">Tap the floating Scan button over a Pokémon.</string>
+</resources>
