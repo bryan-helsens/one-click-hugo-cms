@@ -21,6 +21,7 @@ import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.Button
@@ -198,8 +199,26 @@ class CaptureService : Service() {
         }
     }
 
-    /** Grab the most recent mirrored frame and persist it. */
+    /**
+     * Hide the floating button, wait for a clean frame, then capture — otherwise
+     * the button (which the user can drag over the stats) ends up in the
+     * screenshot and blocks the OCR / IV bars.
+     */
     private fun captureFrame() {
+        val btn = overlayButton
+        btn?.visibility = View.INVISIBLE
+        // Drain the buffered frame that still contains the button, then grab the
+        // next one rendered without it.
+        mainHandler.postDelayed({
+            runCatching { imageReader?.acquireLatestImage()?.close() }
+            mainHandler.postDelayed({
+                doCapture()
+                btn?.visibility = View.VISIBLE
+            }, 60)
+        }, 90)
+    }
+
+    private fun doCapture() {
         val image = imageReader?.acquireLatestImage()
         if (image == null) {
             toast(getString(R.string.no_frame))
