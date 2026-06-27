@@ -103,6 +103,11 @@ To install without a cable: **Build → Build APK**, then transfer
 - [x] **Stage 3** — Kotlin IV-bar scanner (port of `ivscan.js`); a tap reads CP/
       HP/name **and** IVs from the same frame; IV% shown in the list; JSON export
       (share sheet) compatible with the web app's import.
+- [x] **Manage** — search, sort (CP / IV% / name / newest), a "transfers only"
+      filter, tap-to-edit every field, and one-tap **delete all transfer
+      suggestions** (weaker duplicates; favorite/shiny/lucky/shadow/legendary
+      protected). The web app has the fuller manager (bulk multi-select, IV%/CP
+      range filters, copy transfer list).
 - [ ] **Stage 4 (maybe)** — auto-detect the appraisal screen so it captures
       without a tap as you flip through Pokémon.
 

@@ -13,6 +13,9 @@
     <string name="delete">Delete</string>
     <string name="clear_all_title">Clear all?</string>
     <string name="clear_all_msg">This deletes every captured Pokémon. This can\'t be undone.</string>
+    <string name="no_transfers">No transfer suggestions right now.</string>
+    <string name="delete_transfers_title">Delete transfer suggestions?</string>
+    <string name="delete_transfers_msg">Delete %1$d weaker duplicate(s)? Favorite / shiny / lucky / shadow / legendary are protected.</string>
 
     <!-- Toasts -->
     <string name="need_overlay">Please grant the overlay permission first.</string>

@@ -281,6 +281,64 @@ input[type="search"], select {
 .poke-iv { font-size: 0.85rem; }
 .poke-iv b { color: var(--primary); }
 
+/* Advanced filters + bulk actions */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.filter-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.filter-field input {
+  width: 84px;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover { background: #f06b6b; }
+
+.bulk-bar {
+  position: sticky;
+  top: 64px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.bulk-count { font-weight: 600; }
+.bulk-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Selection checkbox on each card */
+.poke-card { position: relative; }
+.poke-select {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.poke-card.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* Inventory toolbar */
 .inventory-toolbar {
   display: flex;

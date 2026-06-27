@@ -118,6 +118,39 @@
         </div>
       </div>
 
+      <div class="filter-row">
+        <label class="filter-field">Min IV%
+          <input id="filter-iv-min" type="number" min="0" max="100" placeholder="0" />
+        </label>
+        <label class="filter-field">CP ≥
+          <input id="filter-cp-min" type="number" min="0" placeholder="0" />
+        </label>
+        <label class="filter-field">CP ≤
+          <input id="filter-cp-max" type="number" min="0" placeholder="∞" />
+        </label>
+        <button id="btn-select-transfer" class="btn btn-ghost btn-sm" type="button">
+          Select transfer suggestions
+        </button>
+        <button id="btn-select-shown" class="btn btn-ghost btn-sm" type="button">
+          Select all shown
+        </button>
+        <button id="btn-reset-filters" class="btn btn-ghost btn-sm" type="button">
+          Reset filters
+        </button>
+      </div>
+
+      <div id="bulk-bar" class="bulk-bar" hidden>
+        <span id="bulk-count" class="bulk-count">0 selected</span>
+        <div class="bulk-actions">
+          <button data-bulk="favorite" class="btn btn-ghost btn-sm" type="button">⭐ Favorite</button>
+          <button data-bulk="unfavorite" class="btn btn-ghost btn-sm" type="button">☆ Unfavorite</button>
+          <button data-bulk="shiny" class="btn btn-ghost btn-sm" type="button">✨ Shiny</button>
+          <button data-bulk="copy" class="btn btn-ghost btn-sm" type="button">📋 Copy transfer list</button>
+          <button data-bulk="delete" class="btn btn-danger btn-sm" type="button">🗑️ Delete</button>
+          <button id="bulk-clear" class="btn btn-ghost btn-sm" type="button">Clear</button>
+        </div>
+      </div>
+
       <div id="inventory" class="inventory-grid" aria-live="polite"></div>
       <p id="empty-state" class="empty-state" hidden>
         No Pokémon yet. Upload a screenshot above to add your first one!

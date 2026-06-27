@@ -119,6 +119,34 @@ object InventoryStore {
 
     fun clear(context: Context) = save(context, emptyList())
 
+    fun deleteAll(context: Context, ids: Set<String>) {
+        save(context, load(context).filterNot { ids.contains(it.id) })
+    }
+
+    /**
+     * Transfer suggestions: among duplicates of the same species, the weaker
+     * copies (lower IV%, then CP) that aren't favorited/shiny/lucky/shadow/
+     * legendary. Mirrors the web app's logic.
+     */
+    fun transferSuggestions(list: List<PokemonRecord>): Set<String> {
+        val out = mutableSetOf<String>()
+        list.filter { it.name != null }
+            .groupBy { it.name!!.lowercase() }
+            .forEach { (_, group) ->
+                if (group.size < 2) return@forEach
+                val ranked = group.sortedWith(
+                    compareByDescending<PokemonRecord> { it.ivPercent ?: -1 }
+                        .thenByDescending { it.cp ?: 0 }
+                )
+                ranked.drop(1).forEach { p ->
+                    val isProtected =
+                        p.favorite || p.shiny || p.lucky || p.shadow || p.legendary
+                    if (!isProtected) out.add(p.id)
+                }
+            }
+        return out
+    }
+
     fun save(context: Context, list: List<PokemonRecord>) {
         val arr = JSONArray()
         for (r in list) {

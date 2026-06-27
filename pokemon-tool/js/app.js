@@ -18,6 +18,9 @@
   const PROTECTED_FLAGS = ["favorite", "shiny", "lucky", "shadow", "legendary"];
 
   let inventory = Storage.load();
+  const selected = new Set(); // ids of bulk-selected Pokémon
+  let lastShown = []; // the currently filtered/sorted list on screen
+  let lastTransferIds = new Set();
 
   // ---- Element refs ----
   const $ = (sel) => document.querySelector(sel);
@@ -32,6 +35,15 @@
     search: $("#search"),
     filterTag: $("#filter-tag"),
     sortBy: $("#sort-by"),
+    filterIvMin: $("#filter-iv-min"),
+    filterCpMin: $("#filter-cp-min"),
+    filterCpMax: $("#filter-cp-max"),
+    btnSelectTransfer: $("#btn-select-transfer"),
+    btnSelectShown: $("#btn-select-shown"),
+    btnResetFilters: $("#btn-reset-filters"),
+    bulkBar: $("#bulk-bar"),
+    bulkCount: $("#bulk-count"),
+    bulkClear: $("#bulk-clear"),
     pokedexList: $("#pokedex-list"),
     screenshotInput: $("#screenshot-input"),
     ocrDrop: $("#ocr-drop"),
@@ -238,6 +250,14 @@
 
   function renderInventory(dupIds, transferIds) {
     const list = applyControls(inventory, dupIds, transferIds);
+    lastShown = list;
+    lastTransferIds = transferIds;
+
+    // Drop selections that no longer exist.
+    const ids = new Set(inventory.map((p) => p.id));
+    [...selected].forEach((id) => {
+      if (!ids.has(id)) selected.delete(id);
+    });
 
     els.invCount.textContent = inventory.length;
     els.emptyState.hidden = inventory.length !== 0;
@@ -250,18 +270,28 @@
       els.inventory.innerHTML =
         '<p class="empty-state">No Pokémon match your search/filter.</p>';
     }
+    updateBulkBar();
   }
 
   function applyControls(list, dupIds, transferIds) {
     const q = els.search.value.trim().toLowerCase();
     const tag = els.filterTag.value;
     const sort = els.sortBy.value;
+    const ivMin = numberOrNull(els.filterIvMin.value);
+    const cpMin = numberOrNull(els.filterCpMin.value);
+    const cpMax = numberOrNull(els.filterCpMax.value);
 
     let out = list.filter((p) => {
       if (q) {
         const hay = (p.name + " " + (p.notes || "")).toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (ivMin != null) {
+        const iv = ivPercent(p);
+        if (iv == null || iv < ivMin) return false;
+      }
+      if (cpMin != null && (p.cp || 0) < cpMin) return false;
+      if (cpMax != null && (p.cp || 0) > cpMax) return false;
       if (tag === "duplicate") return dupIds.has(p.id);
       if (tag === "transfer") return transferIds.has(p.id);
       if (tag) return !!p[tag];
@@ -291,9 +321,11 @@
     const classes = ["poke-card"];
     if (isTransfer) classes.push("is-transfer");
     if (p.favorite) classes.push("is-favorite");
+    if (selected.has(p.id)) classes.push("is-selected");
 
     return `
       <article class="${classes.join(" ")}" data-id="${p.id}">
+        <input type="checkbox" class="poke-select" data-id="${p.id}" ${selected.has(p.id) ? "checked" : ""} aria-label="Select ${escapeHTML(p.name)}" />
         <div class="poke-name">${escapeHTML(p.name)}</div>
         <div class="poke-stats">
           <span>CP <b>${p.cp || "—"}</b></span>
@@ -330,9 +362,23 @@
     els.addForm.addEventListener("submit", onAddSubmit);
     els.editForm.addEventListener("submit", onEditSubmit);
     els.inventory.addEventListener("click", onInventoryClick);
-    [els.search, els.filterTag, els.sortBy].forEach((el) =>
-      el.addEventListener("input", render)
+    els.inventory.addEventListener("change", onSelectChange);
+    [
+      els.search, els.filterTag, els.sortBy,
+      els.filterIvMin, els.filterCpMin, els.filterCpMax
+    ].forEach((el) => el.addEventListener("input", render));
+
+    // Bulk selection + actions
+    els.btnSelectTransfer.addEventListener("click", () => selectIds(lastTransferIds));
+    els.btnSelectShown.addEventListener("click", () =>
+      selectIds(new Set(lastShown.map((p) => p.id)))
     );
+    els.btnResetFilters.addEventListener("click", resetFilters);
+    els.bulkClear.addEventListener("click", clearSelection);
+    els.bulkBar.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-bulk]");
+      if (btn) applyBulk(btn.dataset.bulk);
+    });
 
     // OCR: file input + drag & drop
     els.screenshotInput.addEventListener("change", (e) => {
@@ -394,6 +440,91 @@
       }
     } else if (btn.dataset.action === "edit") {
       openEditModal(p);
+    }
+  }
+
+  // ---- Bulk selection + actions ----
+  function onSelectChange(e) {
+    const box = e.target.closest(".poke-select");
+    if (!box) return;
+    const id = box.dataset.id;
+    if (box.checked) selected.add(id);
+    else selected.delete(id);
+    const card = box.closest(".poke-card");
+    if (card) card.classList.toggle("is-selected", box.checked);
+    updateBulkBar();
+  }
+
+  function selectIds(idSet) {
+    idSet.forEach((id) => selected.add(id));
+    render();
+  }
+
+  function clearSelection() {
+    selected.clear();
+    render();
+  }
+
+  function updateBulkBar() {
+    const n = selected.size;
+    els.bulkBar.hidden = n === 0;
+    els.bulkCount.textContent = `${n} selected`;
+  }
+
+  function resetFilters() {
+    els.search.value = "";
+    els.filterTag.value = "";
+    els.filterIvMin.value = "";
+    els.filterCpMin.value = "";
+    els.filterCpMax.value = "";
+    render();
+  }
+
+  function applyBulk(action) {
+    const ids = [...selected];
+    if (!ids.length) return;
+
+    if (action === "delete") {
+      if (!confirm(`Delete ${ids.length} selected Pokémon? This can't be undone.`)) return;
+      const drop = new Set(ids);
+      inventory = inventory.filter((p) => !drop.has(p.id));
+      selected.clear();
+      Storage.save(inventory);
+      render();
+      return;
+    }
+
+    if (action === "copy") {
+      copyTransferList(ids);
+      return;
+    }
+
+    const setFlag = { favorite: ["favorite", true], unfavorite: ["favorite", false], shiny: ["shiny", true] }[action];
+    if (setFlag) {
+      const [flag, val] = setFlag;
+      const sel = new Set(ids);
+      inventory.forEach((p) => {
+        if (sel.has(p.id)) p[flag] = val;
+      });
+      Storage.save(inventory);
+      render();
+    }
+  }
+
+  function copyTransferList(ids) {
+    const sel = new Set(ids);
+    const lines = inventory
+      .filter((p) => sel.has(p.id))
+      .map((p) => {
+        const iv = ivPercent(p);
+        return `${p.name} — CP ${p.cp || "?"}${iv != null ? ` · IV ${iv}%` : ""}`;
+      });
+    const text = lines.join("\n");
+    const done = () => alert(`Copied ${lines.length} Pokémon to the clipboard:\n\n${text}`);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(done);
+    } else {
+      done();
     }
   }
 

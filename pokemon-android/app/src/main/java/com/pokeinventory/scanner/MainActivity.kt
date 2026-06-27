@@ -8,6 +8,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
@@ -28,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var projectionManager: MediaProjectionManager
     private var records: List<PokemonRecord> = emptyList()
+    private var transferIds: Set<String> = emptySet()
+    private val sortOptions = listOf("Newest", "CP: high→low", "IV%: high→low", "Name A→Z")
 
     // Result of the system "Start screen capture?" dialog.
     private val captureLauncher = registerForActivityResult(
@@ -55,9 +61,42 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnExport.setOnClickListener { exportInventory() }
         binding.btnClear.setOnClickListener { confirmClearAll() }
+        binding.btnDeleteTransfer.setOnClickListener { confirmDeleteTransfers() }
         binding.listCaptures.setOnItemClickListener { _, _, position, _ ->
             records.getOrNull(position)?.let { showEditDialog(it) }
         }
+
+        // Filter + sort controls
+        binding.spinnerSort.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, sortOptions
+        )
+        binding.spinnerSort.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) = refresh()
+                override fun onNothingSelected(p: AdapterView<*>?) {}
+            }
+        binding.cbTransferOnly.setOnCheckedChangeListener { _, _ -> refresh() }
+        binding.search.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) = refresh()
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+    }
+
+    private fun confirmDeleteTransfers() {
+        if (transferIds.isEmpty()) {
+            Toast.makeText(this, R.string.no_transfers, Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.delete_transfers_title)
+            .setMessage(getString(R.string.delete_transfers_msg, transferIds.size))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                InventoryStore.deleteAll(this, transferIds)
+                refresh()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun confirmClearAll() {
@@ -193,19 +232,35 @@ class MainActivity : AppCompatActivity() {
             if (Settings.canDrawOverlays(this)) getString(R.string.overlay_ok)
             else getString(R.string.grant_overlay)
 
-        records = InventoryStore.load(this)
-        val rows = records.map { r ->
+        val all = InventoryStore.load(this)
+        transferIds = InventoryStore.transferSuggestions(all)
+
+        val query = binding.search.text.toString().trim().lowercase()
+        var list = all.filter { (it.name ?: "").lowercase().contains(query) }
+        if (binding.cbTransferOnly.isChecked) {
+            list = list.filter { transferIds.contains(it.id) }
+        }
+        list = when (binding.spinnerSort.selectedItemPosition) {
+            1 -> list.sortedByDescending { it.cp ?: 0 }
+            2 -> list.sortedByDescending { it.ivPercent ?: -1 }
+            3 -> list.sortedBy { (it.name ?: "").lowercase() }
+            else -> list.sortedByDescending { it.ts }
+        }
+        records = list
+
+        val rows = list.map { r ->
             val tags = buildString {
                 if (r.shiny) append(" ✨")
                 if (r.lucky) append(" 🍀")
                 if (r.shadow) append(" 🌑")
                 if (r.favorite) append(" ⭐")
                 if (r.legendary) append(" 👑")
+                if (transferIds.contains(r.id)) append(" 🗑️")
             }
             val iv = r.ivPercent?.let { " · IV $it%" } ?: ""
             "${r.name ?: "?"}$tags — CP ${r.cp ?: "?"} · HP ${r.hp ?: "?"}$iv"
         }
-        binding.txtCount.text = getString(R.string.captures_count, rows.size)
+        binding.txtCount.text = getString(R.string.captures_count, list.size)
         binding.listCaptures.adapter = ArrayAdapter(
             this, android.R.layout.simple_list_item_1, rows
         )

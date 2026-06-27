@@ -66,6 +66,41 @@
         android:text="Tap a Pokémon to edit · captured list below"
         android:textStyle="bold" />
 
+    <EditText
+        android:id="@+id/search"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Search name"
+        android:inputType="text"
+        android:importantForAutofill="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+        <Spinner
+            android:id="@+id/spinnerSort"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content" />
+        <CheckBox
+            android:id="@+id/cbTransferOnly"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="🗑️ Transfers only" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnDeleteTransfer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Delete all transfer suggestions" />
+
     <TextView
         android:id="@+id/txtCount"
         android:layout_width="match_parent"

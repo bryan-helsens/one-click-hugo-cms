@@ -24,12 +24,16 @@ Screenshot ──▶ in-browser OCR (Tesseract.js) ──▶ name / CP / HP ─�
    that reads the red bars from a screenshot and pre-fills them for you.
 3. **Track your collection** — tag Pokémon as ✨ Shiny, 🍀 Lucky, 🌑 Shadow,
    👑 Legendary, or ⭐ Favorite. Recognised legendaries are auto-tagged.
-4. **Search, filter & sort** — by name, notes, tag, CP, IV%, or date added.
-5. **Transfer advice** — duplicates of the same species are detected, and the
+4. **Search, filter & sort** — by name/notes, tag, **min IV%**, **CP range**,
+   and sort by CP / IV% / name / date.
+5. **Bulk actions** — select multiple Pokémon (or "Select all shown" / "Select
+   transfer suggestions") and **delete**, **tag** (favorite/shiny), or **copy a
+   transfer list** to the clipboard in one go.
+6. **Transfer advice** — duplicates of the same species are detected, and the
    weaker copies (that aren't favorited/shiny/lucky/shadow/legendary) are
    flagged as transfer candidates. The *best* copy to keep is chosen by IV%
    first, then CP — so you protect your highest-IV mon and clear out the rest.
-6. **Backup** — Export/Import your whole inventory as JSON to back it up or move
+7. **Backup** — Export/Import your whole inventory as JSON to back it up or move
    it between devices.
 
 ## Running it
