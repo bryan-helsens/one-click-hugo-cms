@@ -8,9 +8,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.media.Image
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
@@ -51,14 +55,19 @@ class CaptureService : Service() {
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "capture"
         private const val NOTIF_ID = 42
+        private const val AUTO_INTERVAL = 1500L // ms between auto-capture samples
     }
 
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private var overlayButton: Button? = null
+    private var overlayParams: WindowManager.LayoutParams? = null
     private lateinit var windowManager: WindowManager
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private var autoMode = false
+    private var lastAutoKey: String? = null // de-dupe: last species|cp auto-saved
 
     private var width = 0
     private var height = 0
@@ -150,25 +159,33 @@ class CaptureService : Service() {
         val button = Button(this).apply { text = getString(R.string.scan_button) }
         button.setOnClickListener { captureFrame() }
 
-        // Drag to reposition; a tap (no real movement) triggers a capture.
+        // Tap = capture · drag = reposition · long-press = toggle auto-capture.
         val slop = ViewConfiguration.get(this).scaledTouchSlop
         var downX = 0f
         var downY = 0f
         var startX = 0
         var startY = 0
         var dragging = false
+        var longFired = false
+        val longPress = Runnable {
+            if (!dragging) { longFired = true; toggleAuto() }
+        }
         button.setOnTouchListener { v, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX; downY = e.rawY
                     startX = params.x; startY = params.y
-                    dragging = false
+                    dragging = false; longFired = false
+                    mainHandler.postDelayed(longPress, 600)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - downX
                     val dy = e.rawY - downY
-                    if (!dragging && hypot(dx, dy) > slop) dragging = true
+                    if (!dragging && hypot(dx, dy) > slop) {
+                        dragging = true
+                        mainHandler.removeCallbacks(longPress)
+                    }
                     if (dragging) {
                         params.x = startX + dx.toInt()
                         params.y = startY + dy.toInt()
@@ -177,7 +194,8 @@ class CaptureService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!dragging) v.performClick()
+                    mainHandler.removeCallbacks(longPress)
+                    if (!dragging && !longFired) v.performClick()
                     true
                 }
                 else -> false
@@ -185,16 +203,66 @@ class CaptureService : Service() {
         }
 
         overlayButton = button
+        overlayParams = params
         windowManager.addView(button, params)
     }
+
+    private fun idleText() =
+        if (autoMode) getString(R.string.auto_on_label) else getString(R.string.scan_button)
 
     /** Briefly show the scan result on the floating button, then reset it. */
     private fun flashResult(text: String) {
         mainHandler.post {
             overlayButton?.text = text
-            mainHandler.postDelayed(
-                { overlayButton?.text = getString(R.string.scan_button) },
-                3000
+            mainHandler.postDelayed({ overlayButton?.text = idleText() }, 3000)
+        }
+    }
+
+    /** Long-press toggles hands-free auto-capture (reads each screen as you browse). */
+    private fun toggleAuto() {
+        autoMode = !autoMode
+        if (autoMode) {
+            lastAutoKey = null
+            overlayButton?.text = idleText()
+            toast(getString(R.string.auto_on))
+            mainHandler.postDelayed(autoRunnable, AUTO_INTERVAL)
+        } else {
+            mainHandler.removeCallbacks(autoRunnable)
+            overlayButton?.text = idleText()
+            toast(getString(R.string.auto_off))
+        }
+    }
+
+    private val autoRunnable = object : Runnable {
+        override fun run() {
+            if (!autoMode) return
+            val image = imageReader?.acquireLatestImage()
+            if (image != null) {
+                try {
+                    val bmp = buildBitmap(image)
+                    blankButtonRegion(bmp) // keep the overlay out of the analysis
+                    recognize(bmp, auto = true)
+                } catch (_: Exception) {
+                } finally {
+                    image.close()
+                }
+            }
+            mainHandler.postDelayed(this, AUTO_INTERVAL)
+        }
+    }
+
+    /** Paint over the floating button's area so it isn't mistaken for stats. */
+    private fun blankButtonRegion(bitmap: Bitmap) {
+        val btn = overlayButton ?: return
+        val p = overlayParams ?: return
+        val left = p.x.coerceIn(0, bitmap.width)
+        val top = p.y.coerceIn(0, bitmap.height)
+        val right = (p.x + btn.width).coerceIn(0, bitmap.width)
+        val bottom = (p.y + btn.height).coerceIn(0, bitmap.height)
+        if (right > left && bottom > top) {
+            Canvas(bitmap).drawRect(
+                left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat(),
+                Paint().apply { color = Color.BLACK }
             )
         }
     }
@@ -225,20 +293,7 @@ class CaptureService : Service() {
             return
         }
         try {
-            val plane = image.planes[0]
-            val rowStride = plane.rowStride
-            val pixelStride = plane.pixelStride
-            val rowPadding = rowStride - pixelStride * width
-
-            val bitmap = Bitmap.createBitmap(
-                width + rowPadding / pixelStride,
-                height,
-                Bitmap.Config.ARGB_8888
-            )
-            bitmap.copyPixelsFromBuffer(plane.buffer)
-            val cropped = Bitmap.createBitmap(bitmap, 0, 0, width, height)
-            bitmap.recycle()
-            recognize(cropped)
+            recognize(buildBitmap(image))
         } catch (e: Exception) {
             toast(getString(R.string.capture_error, e.message ?: ""))
         } finally {
@@ -246,23 +301,49 @@ class CaptureService : Service() {
         }
     }
 
+    /** Convert a mirrored ImageReader frame into a cropped ARGB bitmap. */
+    private fun buildBitmap(image: Image): Bitmap {
+        val plane = image.planes[0]
+        val pixelStride = plane.pixelStride
+        val rowPadding = plane.rowStride - pixelStride * width
+        val raw = Bitmap.createBitmap(
+            width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888
+        )
+        raw.copyPixelsFromBuffer(plane.buffer)
+        val cropped = Bitmap.createBitmap(raw, 0, 0, width, height)
+        raw.recycle()
+        return cropped
+    }
+
     /**
      * OCR the frame for name/CP/HP, read the IV bars from the same frame, and
      * store an inventory record. The IV pixel work runs off the main thread.
      */
-    private fun recognize(bitmap: Bitmap) {
+    private fun recognize(bitmap: Bitmap, auto: Boolean = false) {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         recognizer.process(InputImage.fromBitmap(bitmap, 0))
             .addOnSuccessListener { visionText ->
                 val res = ScreenParser.parse(visionText.text)
+
+                // Auto mode: only act on a clear Pokémon screen, and skip the
+                // one we just saved so lingering doesn't re-capture it.
+                if (auto) {
+                    if (res.name == null || res.cp == null) { bitmap.recycle(); return@addOnSuccessListener }
+                    val key = "${res.name}|${res.cp}"
+                    if (key == lastAutoKey) { bitmap.recycle(); return@addOnSuccessListener }
+                    lastAutoKey = key
+                }
+
                 Thread {
                     val iv = runCatching { IvScanner.scan(bitmap) }
                         .getOrDefault(IvScanner.IvResult(null, null, null, 0.0))
                     bitmap.recycle()
 
                     if (res.name == null && res.cp == null && iv.atk == null) {
-                        flashResult(getString(R.string.scan_nothing))
-                        toast(getString(R.string.scan_nothing))
+                        if (!auto) {
+                            flashResult(getString(R.string.scan_nothing))
+                            toast(getString(R.string.scan_nothing))
+                        }
                         return@Thread
                     }
 
@@ -288,7 +369,7 @@ class CaptureService : Service() {
                 }.start()
             }
             .addOnFailureListener { e ->
-                toast(getString(R.string.capture_error, e.message ?: ""))
+                if (!auto) toast(getString(R.string.capture_error, e.message ?: ""))
                 bitmap.recycle()
             }
     }
@@ -315,6 +396,8 @@ class CaptureService : Service() {
         mainHandler.post { Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
 
     private fun teardown() {
+        autoMode = false
+        mainHandler.removeCallbacks(autoRunnable)
         overlayButton?.let { runCatching { windowManager.removeView(it) } }
         overlayButton = null
         virtualDisplay?.release()

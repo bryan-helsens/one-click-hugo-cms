@@ -108,8 +108,16 @@ To install without a cable: **Build → Build APK**, then transfer
       suggestions** (weaker duplicates; favorite/shiny/lucky/shadow/legendary
       protected). The web app has the fuller manager (bulk multi-select, IV%/CP
       range filters, copy transfer list).
-- [ ] **Stage 4 (maybe)** — auto-detect the appraisal screen so it captures
-      without a tap as you flip through Pokémon.
+- [x] **Stage 4 — auto-capture** — long-press the floating button to toggle
+      hands-free mode: the app samples the screen (~every 1.5 s), and whenever a
+      new Pokémon detail/appraisal screen appears it auto-reads and saves it (de-
+      duped by species+CP). You just browse your box and appraise as normal.
+
+> **Auto-capture is read-only and ToS-safe.** It never sends taps or swipes into
+> Pokémon GO — *you* navigate the game; the app only looks at what's already on
+> screen. Software that taps/scrolls *inside* the game is gameplay automation,
+> which violates the ToS and risks an account ban, so it is deliberately not
+> built here.
 
 ## Honesty notes
 
