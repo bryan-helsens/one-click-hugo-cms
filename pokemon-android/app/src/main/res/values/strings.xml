@@ -8,6 +8,11 @@
     <string name="scan_button">Scan</string>
     <string name="nothing_to_export">Nothing to export yet.</string>
     <string name="export_chooser">Export inventory JSON</string>
+    <string name="edit_title">Edit Pokémon</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="clear_all_title">Clear all?</string>
+    <string name="clear_all_msg">This deletes every captured Pokémon. This can\'t be undone.</string>
 
     <!-- Toasts -->
     <string name="need_overlay">Please grant the overlay permission first.</string>
@@ -15,6 +20,7 @@
     <string name="capture_denied">Screen capture was denied.</string>
     <string name="scanning_started">Scanning started — open Pokémon GO.</string>
     <string name="no_frame">No frame available yet — try again.</string>
+    <string name="scan_nothing">Couldn\'t read this screen — open a Pokémon\'s detail or appraisal screen.</string>
     <string name="saved_as">Saved %1$s</string>
     <string name="saved_record">Saved %1$s · CP %2$s · HP %3$s</string>
     <string name="capture_error">Capture failed: %1$s</string>

@@ -11,6 +11,7 @@ object ScreenParser {
     // OCR sometimes reads "CP" as GP/OP/CR — be a little forgiving.
     private val cpRegex = Regex("\\b[CGO][PR]\\s*[:.]?\\s*(\\d{2,5})\\b", RegexOption.IGNORE_CASE)
     private val hpLabeled = Regex("HP[^0-9]{0,4}(\\d{1,3})\\s*/\\s*(\\d{1,3})", RegexOption.IGNORE_CASE)
+    private val hpLabeledSingle = Regex("HP[^0-9]{0,4}(\\d{1,3})\\b", RegexOption.IGNORE_CASE)
     private val pairRegex = Regex("(\\d{1,3})\\s*/\\s*(\\d{1,3})")
     private val statLine = Regex("\\bCP\\b|\\d\\s*/\\s*\\d", RegexOption.IGNORE_CASE)
     private val labelLine = Regex("\\b(kg|m|WEIGHT|HEIGHT|POWER|UP|STARDUST)\\b", RegexOption.IGNORE_CASE)
@@ -27,16 +28,23 @@ object ScreenParser {
     }
 
     private fun parseHP(text: String): Int? {
+        // "HP 152 / 152" — prefer the max side of a labelled pair.
         hpLabeled.find(text)?.let {
             val hp = it.groupValues[2].toIntOrNull()
             if (hp != null && hp in 1..600) return hp
         }
+        // Any "n / n" pair where both sides match (full health).
         val pairs = pairRegex.findAll(text).toList()
         for (p in pairs) {
             val a = p.groupValues[1].toIntOrNull()
             val b = p.groupValues[2].toIntOrNull()
             if (a != null && b != null && a == b && b in 1..600) return b
         }
+        // "HP 152" with no slash (some layouts / OCR drops the "/152").
+        hpLabeledSingle.find(text)?.groupValues?.get(1)?.toIntOrNull()?.let {
+            if (it in 1..600) return it
+        }
+        // Last resort: the max side of the first plausible pair.
         pairs.firstOrNull()?.groupValues?.get(2)?.toIntOrNull()?.let {
             if (it in 1..600) return it
         }

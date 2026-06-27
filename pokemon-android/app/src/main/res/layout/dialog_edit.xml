@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Name" android:textStyle="bold" />
+        <EditText android:id="@+id/e_name" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:inputType="textCapWords"
+            android:hint="Name" android:importantForAutofill="no" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="8dp">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="CP" android:textStyle="bold" />
+                <EditText android:id="@+id/e_cp" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:hint="CP" android:importantForAutofill="no" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="HP" android:textStyle="bold" />
+                <EditText android:id="@+id/e_hp" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:inputType="number"
+                    android:hint="HP" android:importantForAutofill="no" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="IVs (0–15)" android:textStyle="bold" android:layout_marginTop="8dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <EditText android:id="@+id/e_iv_atk" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:inputType="number" android:hint="Atk"
+                android:importantForAutofill="no" />
+            <EditText android:id="@+id/e_iv_def" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:inputType="number" android:hint="Def"
+                android:layout_marginStart="8dp" android:importantForAutofill="no" />
+            <EditText android:id="@+id/e_iv_sta" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:inputType="number" android:hint="HP"
+                android:layout_marginStart="8dp" android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <CheckBox android:id="@+id/e_shiny" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="✨ Shiny" />
+        <CheckBox android:id="@+id/e_lucky" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="🍀 Lucky" />
+        <CheckBox android:id="@+id/e_shadow" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="🌑 Shadow" />
+        <CheckBox android:id="@+id/e_favorite" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="⭐ Favorite" />
+        <CheckBox android:id="@+id/e_legendary" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="👑 Legendary" />
+    </LinearLayout>
+</ScrollView>

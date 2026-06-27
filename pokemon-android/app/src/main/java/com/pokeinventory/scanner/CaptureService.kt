@@ -20,10 +20,13 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.Toast
 import androidx.core.app.ServiceCompat
+import kotlin.math.hypot
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -138,15 +141,61 @@ class CaptureService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL
-            x = 16
+            gravity = Gravity.TOP or Gravity.START
+            x = 24
+            y = height / 3
         }
 
-        overlayButton = Button(this).apply {
-            text = getString(R.string.scan_button)
-            setOnClickListener { captureFrame() }
+        val button = Button(this).apply { text = getString(R.string.scan_button) }
+        button.setOnClickListener { captureFrame() }
+
+        // Drag to reposition; a tap (no real movement) triggers a capture.
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var dragging = false
+        button.setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX; downY = e.rawY
+                    startX = params.x; startY = params.y
+                    dragging = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - downX
+                    val dy = e.rawY - downY
+                    if (!dragging && hypot(dx, dy) > slop) dragging = true
+                    if (dragging) {
+                        params.x = startX + dx.toInt()
+                        params.y = startY + dy.toInt()
+                        runCatching { windowManager.updateViewLayout(v, params) }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!dragging) v.performClick()
+                    true
+                }
+                else -> false
+            }
         }
-        windowManager.addView(overlayButton, params)
+
+        overlayButton = button
+        windowManager.addView(button, params)
+    }
+
+    /** Briefly show the scan result on the floating button, then reset it. */
+    private fun flashResult(text: String) {
+        mainHandler.post {
+            overlayButton?.text = text
+            mainHandler.postDelayed(
+                { overlayButton?.text = getString(R.string.scan_button) },
+                3000
+            )
+        }
     }
 
     /** Grab the most recent mirrored frame and persist it. */
@@ -190,8 +239,16 @@ class CaptureService : Service() {
                 Thread {
                     val iv = runCatching { IvScanner.scan(bitmap) }
                         .getOrDefault(IvScanner.IvResult(null, null, null, 0.0))
+                    bitmap.recycle()
+
+                    if (res.name == null && res.cp == null && iv.atk == null) {
+                        flashResult(getString(R.string.scan_nothing))
+                        toast(getString(R.string.scan_nothing))
+                        return@Thread
+                    }
+
                     val legendary = res.name != null && Pokedex.isLegendary(res.name)
-                    InventoryStore.add(
+                    val saved = InventoryStore.addOrMerge(
                         this,
                         PokemonRecord(
                             name = res.name,
@@ -204,18 +261,11 @@ class CaptureService : Service() {
                             ts = System.currentTimeMillis()
                         )
                     )
-                    val ivPct = if (iv.complete)
-                        " · IV ${Math.round((iv.atk!! + iv.def!! + iv.sta!!) / 45.0 * 100)}%"
-                    else ""
-                    toast(
-                        getString(
-                            R.string.saved_record,
-                            res.name ?: "?",
-                            res.cp?.toString() ?: "?",
-                            res.hp?.toString() ?: "?"
-                        ) + ivPct
-                    )
-                    bitmap.recycle()
+                    val ivPct = saved.ivPercent?.let { " · IV $it%" } ?: ""
+                    val summary = "✓ ${saved.name ?: "?"} · CP ${saved.cp ?: "?"}" +
+                        " · HP ${saved.hp ?: "?"}$ivPct"
+                    flashResult(summary)
+                    toast(summary)
                 }.start()
             }
             .addOnFailureListener { e ->
