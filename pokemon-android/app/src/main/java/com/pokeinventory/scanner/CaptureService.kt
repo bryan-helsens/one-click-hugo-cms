@@ -56,6 +56,8 @@ class CaptureService : Service() {
         private const val CHANNEL_ID = "capture"
         private const val NOTIF_ID = 42
         private const val AUTO_INTERVAL = 1500L // ms between auto-capture samples
+        private const val AUTO_NAME_MIN = 0.7 // min fuzzy name score to auto-save
+        private const val AUTO_RECENT_MAX = 12 // de-dupe memory size
     }
 
     private var projection: MediaProjection? = null
@@ -67,7 +69,12 @@ class CaptureService : Service() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var autoMode = false
-    private var lastAutoKey: String? = null // de-dupe: last species|cp auto-saved
+    // Auto-capture de-dupe/confirmation state (guarded by autoLock; OCR/IV run
+    // on background threads). A key is "name|cp|iv?" so a detail screen and an
+    // appraisal screen of the same Pokémon are both captured (and then merged).
+    private val autoLock = Any()
+    private var pendingAutoKey: String? = null
+    private val recentAutoKeys = ArrayDeque<String>()
 
     private var width = 0
     private var height = 0
@@ -222,7 +229,7 @@ class CaptureService : Service() {
     private fun toggleAuto() {
         autoMode = !autoMode
         if (autoMode) {
-            lastAutoKey = null
+            synchronized(autoLock) { pendingAutoKey = null; recentAutoKeys.clear() }
             overlayButton?.text = idleText()
             toast(getString(R.string.auto_on))
             mainHandler.postDelayed(autoRunnable, AUTO_INTERVAL)
@@ -316,6 +323,24 @@ class CaptureService : Service() {
     }
 
     /**
+     * Auto-mode gate: returns true only when this key has been seen on two
+     * consecutive samples and wasn't recently saved. Thread-safe.
+     */
+    private fun shouldAutoSave(key: String): Boolean {
+        synchronized(autoLock) {
+            if (recentAutoKeys.contains(key)) return false
+            if (key != pendingAutoKey) {
+                pendingAutoKey = key
+                return false
+            }
+            pendingAutoKey = null
+            recentAutoKeys.addLast(key)
+            while (recentAutoKeys.size > AUTO_RECENT_MAX) recentAutoKeys.removeFirst()
+            return true
+        }
+    }
+
+    /**
      * OCR the frame for name/CP/HP, read the IV bars from the same frame, and
      * store an inventory record. The IV pixel work runs off the main thread.
      */
@@ -325,25 +350,23 @@ class CaptureService : Service() {
             .addOnSuccessListener { visionText ->
                 val res = ScreenParser.parse(visionText.text)
 
-                // Auto mode: only act on a clear Pokémon screen, and skip the
-                // one we just saved so lingering doesn't re-capture it.
-                if (auto) {
-                    if (res.name == null || res.cp == null) { bitmap.recycle(); return@addOnSuccessListener }
-                    val key = "${res.name}|${res.cp}"
-                    if (key == lastAutoKey) { bitmap.recycle(); return@addOnSuccessListener }
-                    lastAutoKey = key
-                }
-
                 Thread {
                     val iv = runCatching { IvScanner.scan(bitmap) }
                         .getOrDefault(IvScanner.IvResult(null, null, null, 0.0))
                     bitmap.recycle()
 
-                    if (res.name == null && res.cp == null && iv.atk == null) {
-                        if (!auto) {
-                            flashResult(getString(R.string.scan_nothing))
-                            toast(getString(R.string.scan_nothing))
-                        }
+                    if (auto) {
+                        // Require a confident name + CP, and confirm the same
+                        // screen across two samples before saving (filters out
+                        // transient/animation frames). The key includes whether
+                        // IVs were read, so a detail then an appraisal screen of
+                        // the same Pokémon are both captured and then merged.
+                        if (res.name == null || res.cp == null || res.nameScore < AUTO_NAME_MIN) return@Thread
+                        val key = "${res.name}|${res.cp}|${if (iv.complete) "iv" else "no"}"
+                        if (!shouldAutoSave(key)) return@Thread
+                    } else if (res.name == null && res.cp == null && iv.atk == null) {
+                        flashResult(getString(R.string.scan_nothing))
+                        toast(getString(R.string.scan_nothing))
                         return@Thread
                     }
 
