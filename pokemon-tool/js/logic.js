@@ -132,6 +132,56 @@
     return out;
   }
 
+  // National-Dex generation boundaries (cumulative end index), matching the
+  // order of POKEDEX_NAMES in pokedex.js.
+  const DEX_GENS = [
+    { name: "Gen 1", end: 151 }, { name: "Gen 2", end: 251 },
+    { name: "Gen 3", end: 386 }, { name: "Gen 4", end: 493 },
+    { name: "Gen 5", end: 649 }, { name: "Gen 6", end: 721 },
+    { name: "Gen 7", end: 809 }, { name: "Gen 8", end: 905 },
+    { name: "Gen 9", end: 1025 }
+  ];
+
+  /**
+   * Pokédex completion for the current inventory: overall caught/total, a
+   * per-generation breakdown, and the list of still-missing species. Uses the
+   * global POKEDEX_NAMES (single source of truth) unless `names` is passed.
+   */
+  function dexStats(inventory, names) {
+    const dex = names || (typeof POKEDEX_NAMES !== "undefined" ? POKEDEX_NAMES : []);
+    const owned = new Set();
+    inventory.forEach((p) => {
+      const k = normalizeName(p.name);
+      if (k) owned.add(k);
+    });
+    const dexNorm = dex.map((n) => normalizeName(n));
+
+    let start = 0;
+    const gens = DEX_GENS.map((g) => {
+      let c = 0;
+      for (let i = start; i < g.end && i < dexNorm.length; i++) {
+        if (owned.has(dexNorm[i])) c++;
+      }
+      const out = { name: g.name, total: g.end - start, caught: c };
+      start = g.end;
+      return out;
+    });
+
+    let caught = 0;
+    const missing = [];
+    dexNorm.forEach((k, i) => {
+      if (owned.has(k)) caught++;
+      else missing.push(dex[i]);
+    });
+    return {
+      total: dex.length,
+      caught,
+      percent: dex.length ? Math.round((caught / dex.length) * 100) : 0,
+      gens,
+      missing
+    };
+  }
+
   /** A record worth importing carries a name or any stat. */
   function hasData(p) {
     return !!(
@@ -169,6 +219,8 @@
     addOrMerge,
     classifyScreen,
     mergeBatch,
+    dexStats,
+    DEX_GENS,
     hasData,
     sanitizeImport
   };

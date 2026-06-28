@@ -57,6 +57,8 @@
     reviewCount: $("#review-count"),
     btnSaveQueue: $("#btn-save-queue"),
     btnDiscardQueue: $("#btn-discard-queue"),
+    dexOverall: $("#dex-overall"),
+    dexBody: $("#dex-body"),
     fName: $("#f-name"),
     fCp: $("#f-cp"),
     fHp: $("#f-hp"),
@@ -225,18 +227,54 @@
     const { dupIds, transferIds } = computeFlags(inventory);
     renderSummary(transferIds);
     renderInventory(dupIds, transferIds);
+    renderDex();
+  }
+
+  function renderDex() {
+    if (!els.dexBody) return;
+    const d = Logic.dexStats(inventory);
+    els.dexOverall.textContent = `${d.caught} / ${d.total} (${d.percent}%)`;
+    els.dexBody.innerHTML =
+      d.gens
+        .map((g) => {
+          const pct = g.total ? Math.round((g.caught / g.total) * 100) : 0;
+          return (
+            `<div class="dex-gen"><span class="dex-gen-name">${g.name}</span>` +
+            `<div class="dex-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${g.total}" ` +
+            `aria-valuenow="${g.caught}" aria-label="${g.name} ${g.caught} of ${g.total}">` +
+            `<span style="width:${pct}%"></span></div>` +
+            `<span class="dex-gen-count">${g.caught}/${g.total}</span></div>`
+          );
+        })
+        .join("") +
+      `<details class="dex-missing"><summary>Show missing (${d.missing.length})</summary>` +
+      `<div class="dex-missing-list" id="dex-missing-list"></div></details>`;
+
+    // Build the (potentially long) missing list only when first expanded.
+    const det = els.dexBody.querySelector(".dex-missing");
+    det.addEventListener("toggle", () => {
+      const list = document.getElementById("dex-missing-list");
+      if (det.open && list && !list.dataset.filled) {
+        list.innerHTML = d.missing
+          .map((n) => `<span class="dex-chip">${escapeHTML(n)}</span>`)
+          .join("");
+        list.dataset.filled = "1";
+      }
+    });
   }
 
   function renderSummary(transferIds) {
     const total = inventory.length;
     const count = (f) => inventory.filter((p) => p[f]).length;
+    const dex = Logic.dexStats(inventory);
     const cards = [
       { value: total, label: "Total Pokémon" },
       { value: count("shiny"), label: "✨ Shiny" },
       { value: count("legendary"), label: "👑 Legendary" },
       { value: count("lucky"), label: "🍀 Lucky" },
       { value: count("shadow"), label: "🌑 Shadow" },
-      { value: transferIds.size, label: "🗑️ Can transfer" }
+      { value: transferIds.size, label: "🗑️ Can transfer" },
+      { value: `${dex.caught}/${dex.total}`, label: "📘 Pokédex" }
     ];
     els.summary.innerHTML = cards
       .map(

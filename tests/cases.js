@@ -207,6 +207,40 @@ test("parse: appraisal IV-bar labels are not mistaken for a name", function () {
   assert.strictEqual(p.hp, null); // appraisal screen has no HP number
 });
 
+// ---- Pokédex completion (Part D) ----
+test("dex: generation boundaries line up with POKEDEX_NAMES", function () {
+  assert.strictEqual(POKEDEX_NAMES.length, 1025);
+  assert.strictEqual(POKEDEX_NAMES[150], "Mew");        // end of Gen 1
+  assert.strictEqual(POKEDEX_NAMES[250], "Celebi");     // end of Gen 2
+  assert.strictEqual(POKEDEX_NAMES[385], "Deoxys");     // end of Gen 3
+  assert.strictEqual(POKEDEX_NAMES[1024], "Pecharunt"); // end of Gen 9
+});
+
+test("dexStats: counts, per-gen, missing, dedupe, unnamed ignored", function () {
+  const inv = [
+    rec({ name: "Bulbasaur" }), rec({ name: "Charizard" }),
+    rec({ name: "Charizard" }), // duplicate species counts once
+    rec({ name: "Celebi" }), rec({ name: null, cp: 100 })
+  ];
+  const d = Logic.dexStats(inv);
+  assert.strictEqual(d.total, 1025);
+  assert.strictEqual(d.caught, 3); // Bulbasaur, Charizard, Celebi
+  assert.strictEqual(d.percent, 0); // round(3/1025*100)
+  assert.strictEqual(d.gens[0].name, "Gen 1");
+  assert.strictEqual(d.gens[0].caught, 2); // Bulbasaur + Charizard
+  assert.strictEqual(d.gens[1].caught, 1); // Celebi (Gen 2)
+  assert.strictEqual(d.missing.length, 1022);
+  assert.ok(d.missing.includes("Pikachu"));
+  assert.ok(!d.missing.includes("Charizard"));
+});
+
+test("dexStats: empty inventory is 0% complete", function () {
+  const d = Logic.dexStats([]);
+  assert.strictEqual(d.caught, 0);
+  assert.strictEqual(d.percent, 0);
+  assert.strictEqual(d.missing.length, 1025);
+});
+
 test("round-trip: Android-shape record (no added/notes) imports cleanly", function () {
   const android = { id: "a1", name: "Slaking", cp: 3409, hp: 207,
     ivAtk: 13, ivDef: 14, ivSta: 12, shiny: false, lucky: false, shadow: false,
