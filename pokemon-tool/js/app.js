@@ -15,7 +15,8 @@
     favorite: { emoji: "⭐", label: "Favorite" },
     legendary: { emoji: "👑", label: "Legendary" }
   };
-  const PROTECTED_FLAGS = ["favorite", "shiny", "lucky", "shadow", "legendary"];
+  // Pure inventory logic lives in logic.js (shared with the test suite).
+  const { ivPercent, computeFlags, sanitizeImport } = Logic;
 
   let inventory = Storage.load();
   const selected = new Set(); // ids of bulk-selected Pokémon
@@ -172,11 +173,6 @@
   }
 
   /** IV percentage for a stored Pokémon, or null if IVs are unknown. */
-  function ivPercent(p) {
-    if (p.ivAtk == null || p.ivDef == null || p.ivSta == null) return null;
-    return Math.round(((p.ivAtk + p.ivDef + p.ivSta) / 45) * 100);
-  }
-
   function populatePokedexDatalist() {
     const frag = document.createDocumentFragment();
     POKEDEX_NAMES.forEach((name) => {
@@ -187,40 +183,7 @@
     els.pokedexList.appendChild(frag);
   }
 
-  // ---- Derived data: which entries are duplicates / transfer suggestions ----
-  function computeFlags(list) {
-    const byName = {};
-    list.forEach((p) => {
-      const key = normalizeName(p.name);
-      if (!key) return; // unnamed records aren't duplicates of one another
-      (byName[key] = byName[key] || []).push(p);
-    });
-
-    const dupIds = new Set();
-    const transferIds = new Set();
-
-    Object.values(byName).forEach((group) => {
-      if (group.length < 2) return;
-      group.forEach((p) => dupIds.add(p.id));
-
-      // Keep the best copy (highest IV%, then CP); suggest transferring the
-      // weaker, unprotected dupes.
-      const sorted = [...group].sort((a, b) => {
-        const ivA = ivPercent(a);
-        const ivB = ivPercent(b);
-        if (ivA != null && ivB != null && ivA !== ivB) return ivB - ivA;
-        if (ivA != null && ivB == null) return -1;
-        if (ivA == null && ivB != null) return 1;
-        return (b.cp || 0) - (a.cp || 0);
-      });
-      sorted.slice(1).forEach((p) => {
-        const isProtected = PROTECTED_FLAGS.some((f) => p[f]);
-        if (!isProtected) transferIds.add(p.id);
-      });
-    });
-
-    return { dupIds, transferIds };
-  }
+  // Duplicate / transfer-suggestion detection lives in logic.js (computeFlags).
 
   // ---- Rendering ----
   function render() {
@@ -704,14 +667,10 @@
         const merge = confirm(
           "OK = merge with your current inventory.\nCancel = replace it entirely."
         );
-        // Keep any record with real data — including scans whose name didn't
-        // OCR (name null), so they can be fixed in the editor instead of lost.
-        const hasData = (p) =>
-          p && (p.name || p.cp != null || p.hp != null ||
-            p.ivAtk != null || p.ivDef != null || p.ivSta != null);
-        const cleaned = data
-          .filter(hasData)
-          .map((p) => ({ id: p.id || Storage.newId(), added: p.added || p.ts || Date.now(), ...p }));
+        // sanitizeImport keeps any record with real data — including scans
+        // whose name didn't OCR (name null) — so they can be fixed in the
+        // editor instead of being lost.
+        const cleaned = sanitizeImport(data, Storage.newId, () => Date.now());
         inventory = merge ? inventory.concat(cleaned) : cleaned;
         Storage.save(inventory);
         render();

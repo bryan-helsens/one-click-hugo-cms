@@ -1,0 +1,25 @@
+name: Logic tests
+
+# Runs the framework-free Node test suite for the web app's pure logic.
+# Fast and dependency-free: just `node tests/run.js`.
+
+on:
+  push:
+    branches:
+      - claude/pokemon-go-inventory-tool-hlz6wh
+    paths:
+      - "pokemon-tool/**"
+      - "tests/**"
+      - ".github/workflows/tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run logic tests
+        run: node tests/run.js
