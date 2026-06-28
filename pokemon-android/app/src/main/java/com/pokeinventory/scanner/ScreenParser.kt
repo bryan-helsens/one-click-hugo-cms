@@ -17,7 +17,10 @@ object ScreenParser {
     private val hpLabeled = Regex("HP[^0-9]{0,4}(\\d{1,3})\\s*/\\s*(\\d{1,3})", RegexOption.IGNORE_CASE)
     private val pairRegex = Regex("(\\d{1,3})\\s*/\\s*(\\d{1,3})")
     private val statLine = Regex("\\bCP\\b|\\d\\s*/\\s*\\d", RegexOption.IGNORE_CASE)
-    private val labelLine = Regex("\\b(kg|m|WEIGHT|HEIGHT|POWER|UP|STARDUST)\\b", RegexOption.IGNORE_CASE)
+    private val labelLine = Regex(
+        "\\b(kg|m|WEIGHT|HEIGHT|POWER|UP|STARDUST|ATTACK|DEFENSE|DEFENCE|STAMINA|HP)\\b",
+        RegexOption.IGNORE_CASE
+    )
 
     fun parse(raw: String): Result {
         val lines = raw.split("\n").map { it.trim() }.filter { it.isNotEmpty() }

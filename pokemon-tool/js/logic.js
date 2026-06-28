@@ -105,6 +105,33 @@
     return out;
   }
 
+  /**
+   * Classify which Pokémon GO screen a scan came from, to drive the two-scan
+   * merge: the appraisal screen shows the IV bars (no HP number); the detail
+   * screen shows the HP number (no IV bars).
+   * @returns "appraisal" | "detail" | "unknown"
+   */
+  function classifyScreen(parsed, hasIv) {
+    if (hasIv) return "appraisal";
+    if (parsed && parsed.hp != null) return "detail";
+    if (parsed && parsed.cp != null && parsed.name != null) return "detail";
+    return "unknown";
+  }
+
+  /**
+   * Fold a batch of scans into merged records (detail + appraisal of the same
+   * species combine into one). Order-independent: sorts by ts first so the
+   * directional addOrMerge window doesn't matter within a batch.
+   */
+  function mergeBatch(records) {
+    const sorted = records.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    let out = [];
+    sorted.forEach((r) => {
+      out = addOrMerge(out, r, Number.MAX_SAFE_INTEGER);
+    });
+    return out;
+  }
+
   /** A record worth importing carries a name or any stat. */
   function hasData(p) {
     return !!(
@@ -140,6 +167,8 @@
     mergeRecords,
     findMergeIndex,
     addOrMerge,
+    classifyScreen,
+    mergeBatch,
     hasData,
     sanitizeImport
   };

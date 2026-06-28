@@ -181,6 +181,32 @@ test("round-trip: web export -> JSON -> import preserves the core contract", fun
   });
 });
 
+// ---- Screen-type classification + batch merge (Part C) ----
+test("classifyScreen: detail vs appraisal vs unknown", function () {
+  assert.strictEqual(Logic.classifyScreen({ name: "Charizard", cp: 2500, hp: 152 }, false), "detail");
+  assert.strictEqual(Logic.classifyScreen({ name: "Charizard", cp: 2500, hp: null }, true), "appraisal");
+  assert.strictEqual(Logic.classifyScreen({ name: "Charizard", cp: 2500, hp: null }, false), "detail");
+  assert.strictEqual(Logic.classifyScreen({ name: null, cp: null, hp: null }, false), "unknown");
+});
+
+test("mergeBatch: detail + appraisal of same species merge; order-independent", function () {
+  const detail = rec({ id: "d", name: "Dratini", cp: 1500, hp: 41, ts: 30 });
+  const appr = rec({ id: "x", name: "Dratini", cp: 1500, ivAtk: 12, ivDef: 13, ivSta: 14, ts: 10 });
+  const karp = rec({ id: "k", name: "Magikarp", cp: 120, ts: 20 });
+  const out = Logic.mergeBatch([detail, appr, karp]); // intentionally out of ts order
+  assert.strictEqual(out.length, 2);
+  const dr = out.find((r) => r.name === "Dratini");
+  assert.strictEqual(dr.hp, 41);
+  assert.strictEqual(Logic.ivPercent(dr), Logic.ivPercent(appr));
+});
+
+test("parse: appraisal IV-bar labels are not mistaken for a name", function () {
+  const p = OCR.parse("CP 2500\nCharizard\nATTACK\nDEFENSE\nHP");
+  assert.strictEqual(p.name, "Charizard");
+  assert.strictEqual(p.cp, 2500);
+  assert.strictEqual(p.hp, null); // appraisal screen has no HP number
+});
+
 test("round-trip: Android-shape record (no added/notes) imports cleanly", function () {
   const android = { id: "a1", name: "Slaking", cp: 3409, hp: 207,
     ivAtk: 13, ivDef: 14, ivSta: 12, shiny: false, lucky: false, shadow: false,

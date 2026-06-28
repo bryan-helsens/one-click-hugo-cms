@@ -101,9 +101,11 @@ const OCR = {
   parseName(lines) {
     let best = null;
     for (const line of lines) {
-      // Skip lines that are clearly stats/labels.
+      // Skip lines that are clearly stats/labels — including the appraisal
+      // screen's IV-bar labels (ATTACK / DEFENSE / HP / STAMINA), so they're
+      // never mistaken for a species name.
       if (/\bCP\b/i.test(line) || /\d\s*\/\s*\d/.test(line)) continue;
-      if (/\b(kg|m|WEIGHT|HEIGHT|POWER|UP|STARDUST)\b/i.test(line)) continue;
+      if (/\b(kg|m|WEIGHT|HEIGHT|POWER|UP|STARDUST|ATTACK|DEFENSE|DEFENCE|STAMINA|HP)\b/i.test(line)) continue;
 
       // A name line may contain extra tokens; try the whole line and each word.
       const candidates = [line, ...line.split(/\s+/)];
