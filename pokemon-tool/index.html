@@ -39,7 +39,7 @@
           <span class="ocr-drop-text">Tap to take a photo or upload a screenshot</span>
           <span class="ocr-drop-hint">PNG / JPG — your image never leaves this device</span>
         </label>
-        <div id="ocr-status" class="ocr-status" hidden></div>
+        <div id="ocr-status" class="ocr-status" role="status" aria-live="polite" hidden></div>
         <img id="ocr-preview" class="ocr-preview" alt="Screenshot preview" hidden />
       </div>
 
@@ -73,7 +73,7 @@
             <input id="iv-input" type="file" accept="image/*" hidden />
             <label for="iv-input" class="btn btn-ghost btn-sm">📷 Scan appraisal screen</label>
             <span class="tag">experimental</span>
-            <span id="iv-scan-status" class="muted small"></span>
+            <span id="iv-scan-status" class="muted small" role="status" aria-live="polite"></span>
           </div>
           <div id="add-iv" class="iv-picker" data-touched="0"></div>
         </fieldset>
@@ -139,8 +139,8 @@
         </button>
       </div>
 
-      <div id="bulk-bar" class="bulk-bar" hidden>
-        <span id="bulk-count" class="bulk-count">0 selected</span>
+      <div id="bulk-bar" class="bulk-bar" role="region" aria-label="Bulk actions" hidden>
+        <span id="bulk-count" class="bulk-count" aria-live="polite">0 selected</span>
         <div class="bulk-actions">
           <button data-bulk="favorite" class="btn btn-ghost btn-sm" type="button">⭐ Favorite</button>
           <button data-bulk="unfavorite" class="btn btn-ghost btn-sm" type="button">☆ Unfavorite</button>
@@ -170,8 +170,8 @@
 
   <!-- Edit modal -->
   <div id="edit-modal" class="modal" hidden>
-    <div class="modal-card">
-      <h3>Edit Pokémon</h3>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+      <h3 id="edit-modal-title">Edit Pokémon</h3>
       <form id="edit-form" class="add-form">
         <input type="hidden" name="id" />
         <div class="field">

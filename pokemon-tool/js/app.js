@@ -22,6 +22,7 @@
   const selected = new Set(); // ids of bulk-selected Pokémon
   let lastShown = []; // the currently filtered/sorted list on screen
   let lastTransferIds = new Set();
+  let lastFocused = null; // element to restore focus to when the modal closes
 
   // ---- Element refs ----
   const $ = (sel) => document.querySelector(sel);
@@ -80,41 +81,69 @@
   function buildIvPicker(root) {
     if (!root) return;
     const rows = IV_STATS.map(([key, label]) => {
+      // Decorative segments; the bar itself is the accessible slider control.
       const segs = Array.from(
         { length: 15 },
-        (_, i) =>
-          `<button type="button" class="iv-seg" data-val="${i + 1}" ` +
-          `aria-label="${label} ${i + 1}"></button>`
+        (_, i) => `<span class="iv-seg" data-val="${i + 1}" aria-hidden="true"></span>`
       ).join("");
       return (
-        `<div class="iv-row"><span class="iv-label">${label}</span>` +
-        `<div class="iv-bar" data-stat="${key}" data-value="0">${segs}</div>` +
-        `<span class="iv-val">0</span></div>`
+        `<div class="iv-row"><span class="iv-label" id="iv-${key}-${root.id}">${label}</span>` +
+        `<div class="iv-bar" data-stat="${key}" data-value="0" role="slider" tabindex="0" ` +
+        `aria-labelledby="iv-${key}-${root.id}" aria-valuemin="0" aria-valuemax="15" ` +
+        `aria-valuenow="0" aria-valuetext="0 of 15">${segs}</div>` +
+        `<span class="iv-val" aria-hidden="true">0</span></div>`
       );
     }).join("");
     root.innerHTML =
       rows +
-      '<div class="iv-percent">IV: <b class="iv-total">—</b>' +
+      '<div class="iv-percent">IV: <b class="iv-total" aria-live="polite">—</b>' +
       '<button type="button" class="clear-iv">clear</button></div>';
 
+    // Mouse/touch: click a segment to set the value (click the filled tip to drop one).
     root.addEventListener("click", (e) => {
       const seg = e.target.closest(".iv-seg");
       if (seg) {
         const bar = seg.closest(".iv-bar");
         const val = parseInt(seg.dataset.val, 10);
         const cur = parseInt(bar.dataset.value, 10);
-        setBar(bar, cur === val ? val - 1 : val);
-        root.dataset.touched = "1";
-        updatePercent(root);
+        commitBar(root, bar, cur === val ? val - 1 : val);
       } else if (e.target.closest(".clear-iv")) {
         resetIvPicker(root);
       }
     });
+
+    // Keyboard: the bar behaves as an ARIA slider.
+    root.addEventListener("keydown", (e) => {
+      const bar = e.target.closest(".iv-bar");
+      if (!bar) return;
+      const cur = parseInt(bar.dataset.value, 10);
+      let next = cur;
+      switch (e.key) {
+        case "ArrowRight": case "ArrowUp": case "+": next = cur + 1; break;
+        case "ArrowLeft": case "ArrowDown": case "-": next = cur - 1; break;
+        case "PageUp": next = cur + 3; break;
+        case "PageDown": next = cur - 3; break;
+        case "Home": next = 0; break;
+        case "End": next = 15; break;
+        default: return;
+      }
+      e.preventDefault();
+      commitBar(root, bar, next);
+    });
+  }
+
+  /** Apply a new bar value, mark the picker touched, refresh the percentage. */
+  function commitBar(root, bar, value) {
+    setBar(bar, value);
+    root.dataset.touched = "1";
+    updatePercent(root);
   }
 
   function setBar(bar, value) {
     value = Math.max(0, Math.min(15, value));
     bar.dataset.value = value;
+    bar.setAttribute("aria-valuenow", value);
+    bar.setAttribute("aria-valuetext", `${value} of 15`);
     bar.querySelectorAll(".iv-seg").forEach((s, i) => {
       const on = i < value;
       s.classList.toggle("filled", on);
@@ -368,6 +397,7 @@
     els.editModal.addEventListener("click", (e) => {
       if (e.target === els.editModal) closeModal();
     });
+    document.addEventListener("keydown", onModalKeydown);
   }
 
   function onAddSubmit(e) {
@@ -503,11 +533,43 @@
       f.elements[flag].checked = !!p[flag];
     });
     setIvPicker(els.editIv, { atk: p.ivAtk, def: p.ivDef, sta: p.ivSta });
+    lastFocused = document.activeElement;
     els.editModal.hidden = false;
+    f.elements.name.focus();
   }
 
   function closeModal() {
     els.editModal.hidden = true;
+    // Return focus to whatever opened the modal (keyboard users don't get lost).
+    if (lastFocused && document.contains(lastFocused)) lastFocused.focus();
+    lastFocused = null;
+  }
+
+  /** Keep Tab focus inside the open modal; Escape closes it. */
+  function onModalKeydown(e) {
+    if (els.editModal.hidden) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusables = [
+      ...els.editModal.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+          'select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ].filter((el) => el.offsetParent !== null); // visible/focusable only
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   function onEditSubmit(e) {
