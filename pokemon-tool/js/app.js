@@ -23,6 +23,7 @@
   let lastShown = []; // the currently filtered/sorted list on screen
   let lastTransferIds = new Set();
   let lastFocused = null; // element to restore focus to when the modal closes
+  let queue = []; // batch-upload review queue (parsed, not yet saved)
 
   // ---- Element refs ----
   const $ = (sel) => document.querySelector(sel);
@@ -51,6 +52,11 @@
     ocrDrop: $("#ocr-drop"),
     ocrStatus: $("#ocr-status"),
     ocrPreview: $("#ocr-preview"),
+    reviewPanel: $("#review-panel"),
+    reviewQueue: $("#review-queue"),
+    reviewCount: $("#review-count"),
+    btnSaveQueue: $("#btn-save-queue"),
+    btnDiscardQueue: $("#btn-discard-queue"),
     fName: $("#f-name"),
     fCp: $("#f-cp"),
     fHp: $("#f-hp"),
@@ -375,9 +381,18 @@
 
     // OCR: file input + drag & drop
     els.screenshotInput.addEventListener("change", (e) => {
-      if (e.target.files && e.target.files[0]) handleScreenshot(e.target.files[0]);
+      const files = [...(e.target.files || [])];
+      if (files.length === 1) handleScreenshot(files[0]);
+      else if (files.length > 1) handleBatch(files);
     });
     setupDragDrop();
+
+    // Batch review queue
+    els.reviewQueue.addEventListener("input", onQueueEdit);
+    els.reviewQueue.addEventListener("change", onQueueEdit);
+    els.reviewQueue.addEventListener("click", onQueueClick);
+    els.btnSaveQueue.addEventListener("click", saveQueue);
+    els.btnDiscardQueue.addEventListener("click", discardQueue);
 
     // IV appraisal scan
     els.ivInput.addEventListener("change", (e) => {
@@ -698,9 +713,147 @@
       })
     );
     zone.addEventListener("drop", (e) => {
-      const file = e.dataTransfer && e.dataTransfer.files[0];
-      if (file && file.type.startsWith("image/")) handleScreenshot(file);
+      const files = [...((e.dataTransfer && e.dataTransfer.files) || [])].filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length === 1) handleScreenshot(files[0]);
+      else if (files.length > 1) handleBatch(files);
     });
+  }
+
+  // ---- Batch upload: parse many, review, then save ----
+  async function handleBatch(files) {
+    setStatus(`Reading ${files.length} screenshots…`, "");
+    const records = [];
+    for (let i = 0; i < files.length; i++) {
+      setStatus(
+        `Reading screenshot ${i + 1} of ${files.length}…` +
+          '<div class="progress-bar"><span id="ocr-bar"></span></div>',
+        ""
+      );
+      const bar = document.getElementById("ocr-bar");
+      if (bar) bar.style.width = Math.round((i / files.length) * 100) + "%";
+      try {
+        const { parsed } = await OCR.readImage(files[i]);
+        let iv = { atk: null, def: null, sta: null };
+        try {
+          iv = await IVScan.scan(files[i]);
+        } catch (_) {
+          /* IV optional */
+        }
+        const hasIv = iv.atk != null && iv.def != null && iv.sta != null;
+        records.push({
+          id: Storage.newId(),
+          ts: Date.now() + i,
+          name: parsed.name,
+          cp: parsed.cp,
+          hp: parsed.hp,
+          ivAtk: iv.atk,
+          ivDef: iv.def,
+          ivSta: iv.sta,
+          shiny: false, lucky: false, shadow: false, favorite: false,
+          legendary: parsed.name ? isLegendaryName(parsed.name) : false,
+          screen: Logic.classifyScreen(parsed, hasIv)
+        });
+      } catch (err) {
+        /* skip unreadable images */
+      }
+    }
+    clearOcrUI();
+    renderReviewQueue(Logic.mergeBatch(records));
+  }
+
+  function renderReviewQueue(records) {
+    queue = records.map((r) => Object.assign({ include: true }, r));
+    els.reviewCount.textContent = queue.length;
+    els.reviewPanel.hidden = queue.length === 0;
+    els.reviewQueue.innerHTML = queue.map(queueItemHTML).join("");
+    if (!queue.length) {
+      setStatus("Couldn't read any of those screenshots — try clearer ones.", "error");
+    } else {
+      els.reviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function queueItemHTML(q) {
+    const ivPct = ivPercent(q);
+    const badge =
+      q.screen === "appraisal" ? "🔎 appraisal" : q.screen === "detail" ? "📄 detail" : "❓";
+    const num = (v) => (v == null ? "" : v);
+    return `
+      <div class="queue-item" data-qid="${q.id}">
+        <div class="queue-head">
+          <span class="tag">${badge}</span>
+          <label class="queue-include"><input type="checkbox" data-field="include" ${q.include ? "checked" : ""} /> include</label>
+          <button class="icon-btn danger" data-action="remove" aria-label="Remove">✕</button>
+        </div>
+        <label class="queue-field queue-name">Name
+          <input type="text" list="pokedex-list" data-field="name" value="${escapeHTML(q.name || "")}" placeholder="❓ Unnamed" />
+        </label>
+        <div class="queue-row">
+          <label class="queue-field">CP<input type="number" data-field="cp" value="${num(q.cp)}" /></label>
+          <label class="queue-field">HP<input type="number" data-field="hp" value="${num(q.hp)}" /></label>
+        </div>
+        <div class="queue-row">
+          <label class="queue-field">Atk<input type="number" min="0" max="15" data-field="ivAtk" value="${num(q.ivAtk)}" /></label>
+          <label class="queue-field">Def<input type="number" min="0" max="15" data-field="ivDef" value="${num(q.ivDef)}" /></label>
+          <label class="queue-field">HP<input type="number" min="0" max="15" data-field="ivSta" value="${num(q.ivSta)}" /></label>
+          <span class="queue-iv">${ivPct != null ? "IV " + ivPct + "%" : ""}</span>
+        </div>
+      </div>`;
+  }
+
+  function onQueueEdit(e) {
+    const item = e.target.closest("[data-qid]");
+    const field = e.target.dataset.field;
+    if (!item || !field) return;
+    const q = queue.find((x) => x.id === item.dataset.qid);
+    if (!q) return;
+    if (field === "include") {
+      q.include = e.target.checked;
+    } else if (field === "name") {
+      q.name = e.target.value.trim() || null;
+    } else {
+      q[field] = numberOrNull(e.target.value);
+    }
+    if (["ivAtk", "ivDef", "ivSta"].includes(field)) {
+      const ivEl = item.querySelector(".queue-iv");
+      const pct = ivPercent(q);
+      if (ivEl) ivEl.textContent = pct != null ? "IV " + pct + "%" : "";
+    }
+  }
+
+  function onQueueClick(e) {
+    const btn = e.target.closest('[data-action="remove"]');
+    if (!btn) return;
+    const item = e.target.closest("[data-qid]");
+    queue = queue.filter((x) => x.id !== item.dataset.qid);
+    els.reviewCount.textContent = queue.length;
+    if (!queue.length) discardQueue();
+    else item.remove();
+  }
+
+  function saveQueue() {
+    const toSave = queue
+      .filter((q) => q.include)
+      .map((q) => {
+        const rec = Object.assign({}, q);
+        delete rec.include;
+        delete rec.screen;
+        rec.added = Date.now();
+        if (rec.name && isLegendaryName(rec.name)) rec.legendary = true;
+        return rec;
+      });
+    inventory = toSave.concat(inventory);
+    Storage.save(inventory);
+    discardQueue();
+    render();
+  }
+
+  function discardQueue() {
+    queue = [];
+    els.reviewPanel.hidden = true;
+    els.reviewQueue.innerHTML = "";
   }
 
   // ---- Export / Import ----
@@ -756,6 +909,10 @@
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
   }
+
+  // Minimal hook so automated tests can drive the review queue without a real
+  // OCR run (Tesseract isn't available in the headless test sandbox).
+  window.PokeApp = { renderReviewQueue };
 
   init();
 })();

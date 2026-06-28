@@ -33,11 +33,11 @@
       </p>
 
       <div class="ocr-zone" id="ocr-zone">
-        <input id="screenshot-input" type="file" accept="image/*" hidden />
+        <input id="screenshot-input" type="file" accept="image/*" multiple hidden />
         <label for="screenshot-input" class="ocr-drop" id="ocr-drop">
           <span class="ocr-drop-icon">📸</span>
-          <span class="ocr-drop-text">Tap to take a photo or upload a screenshot</span>
-          <span class="ocr-drop-hint">PNG / JPG — your image never leaves this device</span>
+          <span class="ocr-drop-text">Tap to upload screenshots — one, or many at once</span>
+          <span class="ocr-drop-hint">PNG / JPG — drop a batch to review them all before saving · stays on this device</span>
         </label>
         <div id="ocr-status" class="ocr-status" role="status" aria-live="polite" hidden></div>
         <img id="ocr-preview" class="ocr-preview" alt="Screenshot preview" hidden />
@@ -88,6 +88,17 @@
           <button type="reset" class="btn btn-ghost">Clear</button>
         </div>
       </form>
+    </section>
+
+    <!-- Batch review queue (shown after a multi-screenshot upload) -->
+    <section id="review-panel" class="panel" aria-labelledby="review-title" hidden>
+      <h2 id="review-title">Review scanned Pokémon <span id="review-count" class="count-badge">0</span></h2>
+      <p class="muted">Check each one and fix anything OCR got wrong, then save. Detail and appraisal screenshots of the same Pokémon are merged automatically.</p>
+      <div id="review-queue" class="review-queue" aria-live="polite"></div>
+      <div class="form-actions">
+        <button id="btn-save-queue" class="btn btn-primary" type="button">Save to inventory</button>
+        <button id="btn-discard-queue" class="btn btn-ghost" type="button">Discard all</button>
+      </div>
     </section>
 
     <!-- Inventory -->
